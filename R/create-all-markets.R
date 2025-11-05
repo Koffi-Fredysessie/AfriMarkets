@@ -38,12 +38,12 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Ticker_full_name = ""
                 ),  # BRVM (1)
                 BVC_MARKET = african_market(
-                    Market_short_name = "BRVM",
-                    Market_full_name = "BOURSE REGIONALE DES VALEURS MOBILIERES",
-                    Official_url = "https://www.brvm.org/",
-                    Market_url = "https://www.sikafinance.com/",
+                    Market_short_name = "BVC",
+                    Market_full_name = "BOURSE DE CASABLANCA / CASABLANCA STOCK EXCHANGE",
+                    Official_url = "https://www.casablanca-bourse.com",
+                    Market_url = "",
                     Market_data_url = c(
-                        "https://www.sikafinance.com/api/general/GetHistos"
+                        ""
                     ),
                     List = "",
                     ListShares = "",
@@ -53,7 +53,7 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Shares = data.frame(),
                     Bonds = data.frame(),
                     Ticker_full_name = ""
-                )  # BRVM (2)
+                )  # BVC (2)
             )
         },
         error = function(e) {
