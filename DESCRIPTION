@@ -1,0 +1,47 @@
+Package: BRVM
+Type: Package
+Title: Retrieve Historical Data of Companies Listed on the 'BRVM' Stock Exchange
+Version: 5.3.2
+Authors@R: c(
+    person("Sessie","Koffi Frederic", email = "koffisessie@gmail.com",
+            role = c("aut","cre","cph")),
+    person("Odjo", "Olabiyi Aurel Géoffroy | xgeosoft", role = "aut",
+            email = "odjoaurel@gmail.com"),
+    person("Diakité", "Abdoul Oudouss", role = "aut",
+            email = "abdouloudoussdiakite@gmail.com"),
+    person("Steven","Sanderson", role = "aut",
+            email = "spsanderson@gmail.com")
+            )
+Description: Provide real-time access to data from the Regional Securities Exchange SA, commonly known as the 'BRVM' stock exchange. The goal is to facilitate data access for users of the R programming language. The package includes a variety of data that can be accessed by calling functions.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports: 
+    methods,
+    magrittr,
+    rlang (>= 0.4.11),
+    tidyr,
+    dplyr,
+    httr,
+    httr2,
+    tseries,
+    goftest,
+    nortest,
+    fBasics,
+    stringr,
+    tibble,
+    xml2,
+    highcharter,
+    xts,
+    formattable,
+    timeDate,
+    rvest,
+    lubridate
+Suggests:
+    rmarkdown,
+    knitr,
+    roxygen2,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+RoxygenNote: 7.3.3
+Config/testthat/edition: 3
