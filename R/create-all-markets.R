@@ -13,12 +13,13 @@
 setGeneric("CREATE_ALL_MARKETS", function(object) standardGeneric("CREATE_ALL_MARKETS"))
 
 
-
 #' @rdname CREATE_ALL_MARKETS
 #' @export
 setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) {
     tryCatch(
         {
+            # BRVM (1)
+
             list(
                 BRVM_MARKET = african_market(
                     Market_short_name = "BRVM",
@@ -36,7 +37,10 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Shares = data.frame(),
                     Bonds = data.frame(),
                     Ticker_full_name = ""
-                ),  # BRVM (1)
+                ),
+
+                # BVC (2)
+
                 BVC_MARKET = african_market(
                     Market_short_name = "BVC",
                     Market_full_name = "BOURSE DE CASABLANCA / CASABLANCA STOCK EXCHANGE",
@@ -53,7 +57,9 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Shares = data.frame(),
                     Bonds = data.frame(),
                     Ticker_full_name = ""
-                )  # BVC (2)
+                )
+
+
             )
         },
         error = function(e) {

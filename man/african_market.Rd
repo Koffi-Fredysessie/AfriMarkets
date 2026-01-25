@@ -40,7 +40,7 @@ african_market(
 \arguments{
 \item{Market_short_name}{A character string for the abbreviated name of the market (e.g. "BRVM").}
 
-\item{Market_full_name}{A character string for the full name of the market (e.g. "Bourse Régionale des Valeurs Mobilières").}
+\item{Market_full_name}{A character string for the full name of the market (e.g. "Bourse Regionale des Valeurs Mobilieres").}
 
 \item{Official_url}{A character string for the official website of the market.}
 

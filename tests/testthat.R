@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(BRVM)
+library(AfriMarkets)
 
-test_check("BRVM")
+test_check("AfriMarkets")

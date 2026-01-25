@@ -1,7 +1,7 @@
-Package: BRVM
+Package: AfriMarkets
 Type: Package
-Title: Retrieve Historical Data of Companies Listed on the 'BRVM' Stock Exchange
-Version: 5.3.2
+Title: Retrieve Historical Data of Companies Listed on Africans Stock Exchange
+Version: 1.0.0
 Authors@R: c(
     person("Sessie","Koffi Frederic", email = "koffisessie@gmail.com",
             role = c("aut","cre","cph")),
@@ -12,7 +12,7 @@ Authors@R: c(
     person("Steven","Sanderson", role = "aut",
             email = "spsanderson@gmail.com")
             )
-Description: Provide real-time access to data from the Regional Securities Exchange SA, commonly known as the 'BRVM' stock exchange. The goal is to facilitate data access for users of the R programming language. The package includes a variety of data that can be accessed by calling functions.
+Description: Provide real-time access to data from Africans stock exchange. The goal is to facilitate data access for users of the R programming language. The package includes a variety of data that can be accessed by calling functions.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -36,7 +36,8 @@ Imports:
     formattable,
     timeDate,
     rvest,
-    lubridate
+    lubridate,
+    jsonlite
 Suggests:
     rmarkdown,
     knitr,

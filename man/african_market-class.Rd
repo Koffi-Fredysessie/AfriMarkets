@@ -17,7 +17,7 @@ and market data sources.
 \describe{
 \item{\code{Market_short_name}}{A short abbreviation of the market name (e.g. "BRVM").}
 
-\item{\code{Market_full_name}}{The full name of the market (e.g. "Bourse Régionale des Valeurs Mobilières").}
+\item{\code{Market_full_name}}{The full name of the market (e.g. "Bourse Regionale des Valeurs Mobilieres").}
 
 \item{\code{Official_url}}{The official website of the market.}
 

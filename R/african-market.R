@@ -6,7 +6,7 @@
 #' and market data sources.
 #'
 #' @slot Market_short_name A short abbreviation of the market name (e.g. "BRVM").
-#' @slot Market_full_name The full name of the market (e.g. "Bourse Régionale des Valeurs Mobilières").
+#' @slot Market_full_name The full name of the market (e.g. "Bourse Regionale des Valeurs Mobilieres").
 #' @slot Official_url The official website of the market.
 #' @slot Market_url A general URL for accessing market information.
 #' @slot Market_data_url A URL pointing to detailed market data.
@@ -74,7 +74,7 @@ setClass(
 #' and structured data frames for indexes, shares, and bonds.
 #'
 #' @param Market_short_name A character string for the abbreviated name of the market (e.g. "BRVM").
-#' @param Market_full_name A character string for the full name of the market (e.g. "Bourse Régionale des Valeurs Mobilières").
+#' @param Market_full_name A character string for the full name of the market (e.g. "Bourse Regionale des Valeurs Mobilieres").
 #' @param Official_url A character string for the official website of the market.
 #' @param Market_url A character string for the general URL of the market.
 #' @param Market_data_url A character string for the URL to access detailed market data.
@@ -148,7 +148,8 @@ setMethod("african_market",
                    Bonds = data.frame(),
                    Ticker_full_name = "") {
     tryCatch({
-            new("african_market",
+        # Add a stock market to African Market Register
+           market =  new("african_market",
                 Market_short_name = Market_short_name,
                 Market_full_name  = Market_full_name,
                 Official_url = Official_url,
@@ -161,6 +162,8 @@ setMethod("african_market",
                 Indexes           = Indexes,
                 Shares            = Shares,
                 Ticker_full_name = Ticker_full_name)
+
+        return(market)
     },
     error = function(e) {
         message(e)
@@ -195,29 +198,68 @@ setMethod("$", "african_market", function(x, name) {
 
 
 
+
+
 #' Show method for african_market
 #'
 #' @param object An object of class african_market.
 #'
 #' @importFrom methods new slot slotNames
-#' @importFrom utils capture.output
+#' @importFrom utils capture.output head tail
 #'
 setMethod("show", "african_market", function(object) {
-    output = c(
-        paste0("\033[31mMARKET NAME : ", object@Market_full_name,
-               " (", object@Market_short_name, ").\033[0m"),
-        paste0("Official URL : ",object@Official_url),
-        paste0("============================ ",
-               object@Market_short_name,
-               " TICKERS [n = ", length(object@List), "] ============================"),
-        paste(object@List, collapse = ", "), "\n",
-        paste0("\u2023 === INDEXES [n = ", nrow(object@Indexes), "]"),
-        capture.output(print(object@Indexes)), "\n",
-        paste0("\u2023 === SHARES [n = ", nrow(object@Shares), "]"),
-        capture.output(print(object@Shares)),"\n",
-        paste0("\u2023 === BONDS [n = ", nrow(object@Bonds), "]"),
-        capture.output(print(object@Bonds)),"\n"
-    )
-    writeLines(output)
-})
 
+    # --- Fonctions utilitaires locales pour le style (ASCII-compatible) ---
+    # \x1b est le code hexadécimal pour ESC (Escape)
+    bold  <- function(x) paste0("\x1b[1m", x, "\x1b[22m")
+    cyan  <- function(x) paste0("\x1b[36m", x, "\x1b[39m")
+    grey  <- function(x) paste0("\x1b[90m", x, "\x1b[39m")
+    green <- function(x) paste0("\x1b[32m", x, "\x1b[39m")
+
+    # --- 1. EN-TETE PRINCIPAL ---
+    # Remplacement des tirets longs par des tirets ASCII standards
+    message(bold(cyan(paste0("--- Market Profile: ", object@Market_full_name, " (", object@Market_short_name, ") "))))
+    message(rep("-", max(0, 40 - nchar(object@Market_full_name))), "\n", sep = "")
+
+    message(grey("  Link: "), object@Official_url, "\n\n")
+
+    # --- 2. RESUME DES COMPOSANTS ---
+    message(bold("Summary:\n"))
+    # \x2a est l'astérisque '*' (plus portable que le point unicode \x25cf)
+    # Si vous voulez vraiment le point et que le check passe : \x25cf -> \xe2\x80\xa2 (en UTF-8 hex)
+    message(green("  * "), "Indexes : ", length(object@ListIndexes), " tickers available\n")
+    message(green("  * "), "Shares  : ", length(object@ListShares), " tickers available\n")
+    message("\n")
+
+    # --- 3. AFFICHAGE DES TABLES (Format compact) ---
+
+    display_section <- function(title, data) {
+        n_rows <- nrow(data)
+        n_cols <- ncol(data)
+
+        # \x76 est le 'v' minuscule (remplace le triangle \x25bd pour la portabilité)
+        message(bold(paste0("v ", title)), grey(paste0(" [", n_rows, " x ", n_cols, "]")), "\n", sep = "")
+
+        if (n_rows > 0) {
+            limit_to_print = 200
+            # Note: capture.output est utilisé ici mais le résultat n'est pas message()é
+            # Assurez-vous que l'affichage des données est bien celui désiré
+            print(head(data, limit_to_print))
+
+            if (n_rows > limit_to_print) {
+                message(grey(paste0(" ... and ", n_rows - limit_to_print, " more rows.")), "\n")
+            }
+        } else {
+            message(grey(" <empty table>"), "\n")
+        }
+        message("\n")
+    }
+
+    # Affichage des 3 categories
+    display_section("INDEXES DATA", object@Indexes)
+    display_section("SHARES DATA", object@Shares)
+    display_section("BONDS DATA", object@Bonds)
+
+    # --- 4. PIED DE PAGE ---
+    message(grey(paste0("Data for ", object@Market_short_name, " | End of report")), "\n")
+})
