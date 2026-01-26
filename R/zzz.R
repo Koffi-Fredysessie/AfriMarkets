@@ -2,7 +2,7 @@
 .onAttach <- function(libname, pkgname) {
     msg <- paste0(
         "\n",
-        "== Welcome to AfriMarkets (xgen version) ================================================================",
+        "== Welcome to AfriMarkets [XGEN VERSION] ================================================================",
         "\nIf you find this package useful, please leave a star: ",
         "\n   https://github.com/Koffi-Fredysessie/AfriMarkets",
         "\n",
