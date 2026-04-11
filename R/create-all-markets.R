@@ -57,6 +57,26 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Shares = data.frame(),
                     Bonds = data.frame(),
                     Ticker_full_name = ""
+                ),
+
+                # GSE (3)
+
+                GSE_MARKET = african_market(
+                    Market_short_name = "GSE",
+                    Market_full_name = "GHANA STOCK EXCHANGE",
+                    Official_url = "https://www.gsewebportal.com",
+                    Market_url = "",
+                    Market_data_url = c(
+                        ""
+                    ),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
                 )
 
 

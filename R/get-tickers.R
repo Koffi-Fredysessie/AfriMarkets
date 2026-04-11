@@ -29,6 +29,7 @@
 #' \itemize{
 #'   \item BRVM – Bourse Régionale des Valeurs Mobilières (WAEMU / UEMOA),
 #'   \item BVC – Bourse des Valeurs du Cameroun.
+#'   \item GSE – Ghana Stock Exchange.
 #' }
 #'
 #' Additional markets can be integrated seamlessly in future releases without changing
@@ -78,22 +79,33 @@ setMethod("GET_tickers", signature(market_code = "character"),
               all_markets <- sapply(CREATE_ALL_MARKETS(),
                                     function(x) x@Market_short_name)
 
-              if (!market_code %in% all_markets) {
-                  rlang::inform(paste0(
-                      "The market '", market_code,
-                      "' is not available in this version of AfriMarkets."
-                  ))
-                  return(NULL)
-              }
-
-              # Dispatcher
-              switch(market_code,
+              if(market_code == "ALL"){
+                  list(
                      "BRVM" = .GET_tickers_BRVM(),
                      "BVC"  = .GET_tickers_BVC(),
-                     rlang::inform(
-                         paste0("No GET_tickers() method defined for ", market_code)
-                     )
-              )
+                     "GSE"  = .GET_tickers_GSE()
+                  )
+              } else {
+
+                  if (!market_code %in% all_markets) {
+                      rlang::inform(paste0(
+                          "The market '", market_code,
+                          "' is not available in this version of AfriMarkets."
+                      ))
+                      return(NULL)
+                  }
+
+                  # Dispatcher
+                  switch(market_code,
+                         "BRVM" = .GET_tickers_BRVM(),
+                         "BVC"  = .GET_tickers_BVC(),
+                         "GSE"  = .GET_tickers_GSE(),
+                         rlang::inform(
+                             paste0("No GET_tickers() method defined for ", market_code)
+                         )
+                  )
+              }
+
           })
 
 

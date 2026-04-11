@@ -39,6 +39,7 @@ Supported markets may include, but are not limited to:
 \itemize{
 \item BRVM – Bourse Régionale des Valeurs Mobilières (WAEMU / UEMOA),
 \item BVC – Bourse des Valeurs du Cameroun.
+\item GSE – Ghana Stock Exchange.
 }
 
 Additional markets can be integrated seamlessly in future releases without changing
