@@ -115,7 +115,7 @@ bvc_share_index_info = function() {
         Type = "Index",
         Ticker = bvc_market_indexes_data$Code_Index,
         Description = bvc_market_indexes_data$Indice,
-        `Country.Code` = "ma",
+        `Country.Code` = "MA",
         Ticker_fullname = bvc_market_indexes_data$Code_Index
     )
 

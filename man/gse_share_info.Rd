@@ -4,7 +4,10 @@
 \alias{gse_share_info}
 \title{Récupérer les indices de la Bourse de Casablanca}
 \usage{
-gse_share_info()
+gse_share_info(table_id = "34")
+}
+\arguments{
+\item{table_id}{Table ID.}
 }
 \value{
 Un dataframe contenant :

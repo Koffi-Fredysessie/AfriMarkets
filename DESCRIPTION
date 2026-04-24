@@ -1,7 +1,7 @@
 Package: AfriMarkets
 Type: Package
 Title: Retrieve Historical Data of Companies Listed on Africans Stock Exchange
-Version: 1.0.1
+Version: 1.0.3
 Authors@R: c(
     person("Sessie","Koffi Frederic", email = "koffisessie@gmail.com",
             role = c("aut","cre","cph")),
@@ -30,7 +30,8 @@ Imports:
     readr,
     jsonlite,
     rvest,
-    lubridate
+    lubridate,
+    nortest, fBasics, tseries, stats, goftest,tseries
 Suggests:
     rmarkdown,
     knitr,

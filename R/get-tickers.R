@@ -83,7 +83,8 @@ setMethod("GET_tickers", signature(market_code = "character"),
                   list(
                      "BRVM" = .GET_tickers_BRVM(),
                      "BVC"  = .GET_tickers_BVC(),
-                     "GSE"  = .GET_tickers_GSE()
+                     "GSE"  = .GET_tickers_GSE(),
+                     "NGX"  = .GET_tickers_NGX()
                   )
               } else {
 
@@ -100,6 +101,7 @@ setMethod("GET_tickers", signature(market_code = "character"),
                          "BRVM" = .GET_tickers_BRVM(),
                          "BVC"  = .GET_tickers_BVC(),
                          "GSE"  = .GET_tickers_GSE(),
+                         "NGX"  = .GET_tickers_NGX(),
                          rlang::inform(
                              paste0("No GET_tickers() method defined for ", market_code)
                          )

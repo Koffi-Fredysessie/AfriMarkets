@@ -27,7 +27,7 @@
         "Thank you for using AfriMarkets.\n",
         "\n",
         "------------------------------------------------------------\n",
-        "AVAILABLE MARKETS\n",
+        "AVAILABLES MARKETS\n",
         "------------------------------------------------------------\n",
         markets,
         "\n",

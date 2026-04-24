@@ -77,6 +77,26 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Shares = data.frame(),
                     Bonds = data.frame(),
                     Ticker_full_name = ""
+                ),
+
+                # NGX (4)
+
+                NGX_MARKET = african_market(
+                    Market_short_name = "NGX",
+                    Market_full_name = "NIGERIAN EXCHANGE GROUP",
+                    Official_url = "https://www.ngxgroup.com",
+                    Market_url = "",
+                    Market_data_url = c(
+                        ""
+                    ),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
                 )
 
 

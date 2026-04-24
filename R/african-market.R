@@ -219,7 +219,7 @@ setMethod("show", "african_market", function(object) {
     # --- 1. EN-TETE PRINCIPAL ---
     # Remplacement des tirets longs par des tirets ASCII standards
     message(bold(cyan(paste0("--- Market Profile: ", object@Market_full_name, " (", object@Market_short_name, ") "))))
-    message(rep("-", max(0, 40 - nchar(object@Market_full_name))), "\n", sep = "")
+    message(rep("-", max(0, 100 - nchar(object@Market_full_name))), "\n", sep = "")
 
     message(grey("  Link: "), object@Official_url, "\n\n")
 

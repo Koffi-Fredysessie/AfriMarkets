@@ -127,17 +127,25 @@ get_ticker_code = function(ticker){
 #'
 #' @importFrom httr GET add_headers config timeout status_code content
 #' @importFrom jsonlite fromJSON
-#' @importFrom dplyr mutate select arrange bind_rows everything across where
+#' @importFrom dplyr mutate select arrange bind_rows everything across where distinct na_if
+#' @importFrom magrittr %>%
 #' @importFrom readr type_convert
 #' @importFrom stats runif
+#' @importFrom lubridate parse_date_time
+#' @importFrom rlang abort
 .GET_data_BVC = function(ticker = "ALL",Period = "daily",from = Sys.Date() - 89,to = Sys.Date(),output_format = c("by_col","by_row")) {
 
     market_tickers = GET_tickers("BVC")
+    ticker <- unique(toupper(ticker))
 
     ifelse(ticker[1] =="ALL",ticker <- market_tickers@List,ticker)
     ifelse(ticker[1] =="ALL SHARES",ticker <- market_tickers@ListShares,ticker)
     ifelse(ticker[1] =="ALL INDEXES",ticker <- market_tickers@ListIndexes,ticker)
 
+    first_date <- lubridate::parse_date_time(from, orders = "ymd")
+    end_date   <- lubridate::parse_date_time(to, orders = "ymd")
+
+    url_req = "https://www.casablanca-bourse.com/api/proxy/en/api/bourse_data/instrument_history"
 
     headers <- c(
         "Upgrade-Insecure-Requests" = "1",
@@ -158,44 +166,111 @@ get_ticker_code = function(ticker){
             next
         }
 
-
         ticker_code = get_ticker_code(tick)
 
-        url_req = paste0(
-            "https://www.casablanca-bourse.com/api/proxy/en/api/bourse_data/instrument_history?fields%5Binstrument_history%5D=symbol%2Ccreated%2CopeningPrice%2CcoursCourant%2ChighPrice%2ClowPrice%2CcumulTitresEchanges%2CcumulVolumeEchange%2CtotalTrades%2Ccapitalisation%2CcoursAjuste%2CclosingPrice%2CratioConsolide&fields%5Binstrument%5D=symbol%2ClibelleFR%2ClibelleAR%2ClibelleEN%2Cemetteur_url%2Cinstrument_url&fields%5Btaxonomy_term--bourse_emetteur%5D=name&include=symbol&sort%5Bdate-seance%5D%5Bpath%5D=created&sort%5Bdate-seance%5D%5Bdirection%5D=DESC&filter%5Bfilter-historique-instrument-emetteur%5D%5Bcondition%5D%5Bpath%5D=symbol.codeSociete.meta.drupal_internal__target_id&filter%5Bfilter-historique-instrument-emetteur%5D%5Bcondition%5D%5Bvalue%5D=-1&filter%5Bfilter-historique-instrument-emetteur%5D%5Bcondition%5D%5Boperator%5D=%3D&filter%5Binstrument-history-class%5D%5Bcondition%5D%5Bpath%5D=symbol.codeClasse.field_code&filter%5Binstrument-history-class%5D%5Bcondition%5D%5Bvalue%5D=1&filter%5Binstrument-history-class%5D%5Bcondition%5D%5Boperator%5D=%3D&filter%5Bpublished%5D=1&page%5Boffset%5D=0&filter%5Bfilter-date-start-vh%5D%5Bcondition%5D%5Bpath%5D=field_seance_date&filter%5Bfilter-date-start-vh%5D%5Bcondition%5D%5Boperator%5D=%3E%3D&filter%5Bfilter-date-start-vh%5D%5Bcondition%5D%5Bvalue%5D=",
-            from,
-            "&filter%5Bfilter-date-end-vh%5D%5Bcondition%5D%5Bpath%5D=field_seance_date&filter%5Bfilter-date-end-vh%5D%5Bcondition%5D%5Boperator%5D=%3C%3D&filter%5Bfilter-date-end-vh%5D%5Bcondition%5D%5Bvalue%5D=",
-            to,
-            "&filter%5Bfilter-historique-instrument-emetteur%5D%5Bcondition%5D%5Bpath%5D=symbol.meta.drupal_internal__target_id&filter%5Bfilter-historique-instrument-emetteur%5D%5Bcondition%5D%5Boperator%5D=%3D&filter%5Bfilter-historique-instrument-emetteur%5D%5Bcondition%5D%5Bvalue%5D=",
-            ticker_code
-        )
+        t_range = as.character(as.Date(to) - as.Date(from) + 1)
 
-        # Requête HTTP
-        res <- try(GET(url_req,
-                       add_headers(.headers=headers),
-                       config(ssl_verifypeer = TRUE),
-                       timeout(30)), silent = TRUE)
-
-        Sys.sleep(runif(1,0.1,0.5))
-
-        if (inherits(res, "try-error") || status_code(res) != 200) {
-            message(paste("Can't extract data for",tick))
-            next
+        if (first_date >= end_date){
+            rlang::abort(
+                "The '.from' parameter (start_date) must be less than '.to' (end_date)"
+            )
+        } else if (first_date >= Sys.Date()-2){
+            rlang::abort(
+                "The '.from' parameter (start_date) must be less than today's date"
+            )
         }
 
-        pre_df_tick <- res %>%
-            content("text", encoding = "UTF-8") %>%
-            fromJSON() %>%
-            .$data %>%
-            .$attributes %>%
-            bind_rows()
 
-        if(nrow(pre_df_tick) == 0){
+        range_period = seq(from = first_date, to = end_date, by = "500 day")
+        ifelse(!(end_date %in% range_period),
+               range_period <- c(range_period,end_date),range_period)
+
+        range_period_length = length(range_period)
+        range_period_length_adjusted = range_period_length - 1 # parcourir jusqu'a l'avant derniere date
+        pre_df_tick = NULL
+        nb_merging = 1
+
+        for(i in 1:range_period_length_adjusted) {  # parcourir les intervalles de periode
+
+            from_date <- as.Date.POSIXct(range_period[i])
+            to_date <- as.Date.POSIXct(range_period[i+1])
+
+            params = list(
+                `fields[instrument_history]` = "symbol,created,openingPrice,coursCourant,highPrice,lowPrice,cumulTitresEchanges,cumulVolumeEchange,totalTrades,capitalisation,coursAjuste,closingPrice,ratioConsolide",
+                `fields[instrument]` = "symbol,libelleFR,libelleAR,libelleEN,emetteur_url,instrument_url",
+                `fields[taxonomy_term--bourse_emetteur]` = "name",
+                include = "symbol",
+                `sort[date-seance][path]` = "created",
+                `sort[date-seance][direction]` = "DESC",
+                `filter[filter-historique-instrument-emetteur][condition][path]` = "symbol.codeSociete.meta.drupal_internal__target_id",
+                `filter[filter-historique-instrument-emetteur][condition][value]` = "-1",
+                `filter[filter-historique-instrument-emetteur][condition][operator]` = "=",
+                `filter[instrument-history-class][condition][path]` = "symbol.codeClasse.field_code",
+                `filter[instrument-history-class][condition][value]` = "1",
+                `filter[instrument-history-class][condition][operator]` = "=",
+                `filter[published]` = "1",
+                `page[limit]` = t_range,
+                `page[offset]` = "0",
+                `filter[filter-date-start-vh][condition][path]` = "field_seance_date",
+                `filter[filter-date-start-vh][condition][operator]` = ">=",
+                `filter[filter-date-start-vh][condition][value]` = from_date,
+                `filter[filter-date-end-vh][condition][path]` = "field_seance_date",
+                `filter[filter-date-end-vh][condition][operator]` = "<=",
+                `filter[filter-date-end-vh][condition][value]` = to_date,
+                `filter[filter-historique-instrument-emetteur][condition][path]` = "symbol.meta.drupal_internal__target_id",
+                `filter[filter-historique-instrument-emetteur][condition][operator]` = "=",
+                `filter[filter-historique-instrument-emetteur][condition][value]` = ticker_code
+            )
+
+            # Requête HTTP
+            res <- try(GET(url_req,
+                           add_headers(.headers=headers),
+                           query = params,
+                           config(ssl_verifypeer = TRUE)), silent = TRUE)
+
+            Sys.sleep(runif(1,0.1,0.3))
+
+            if (inherits(res, "try-error") || status_code(res) != 200) {
+                message(paste("Can't extract data for",tick))
+                next
+            }
+
+
+            pre_df_tick_period <- tryCatch({
+                res %>%
+                    content("text", encoding = "UTF-8") %>%
+                    fromJSON() %>%
+                    .$data %>%
+                    .$attributes %>%
+                    bind_rows()
+            }, error = function(e) {
+                return(NULL)
+            })
+
+
+            if(nrow(pre_df_tick_period) > 0){
+                pre_df_tick  = rbind(pre_df_tick,pre_df_tick_period)
+                next
+            }
+
+            nb_merging = nb_merging + 1
+        }
+
+        if(is.data.frame(pre_df_tick)){
+
+            if(nrow(pre_df_tick) > 0){
+                pre_df_tick = pre_df_tick %>%
+                    distinct()
+                message(paste("[100%] - Data extraction for ticker",tick, "between :",min(pre_df_tick$created),"-",max(pre_df_tick$created)))
+
+            }
+
+        } else {
             message(paste("[e] - Data not available for ticker",tick, "between :",from,"-",to))
             next
-        } else {
-            message(paste("[100%] - Data extraction for ticker",tick, "between :",from,"-",to))
         }
+
+
 
         if(output_format[1] == "by_col") {
             df_tick = pre_df_tick %>%
@@ -226,12 +301,16 @@ get_ticker_code = function(ticker){
             }
         }
 
+
     }
 
-    df = df %>%
-        mutate(across(where(is.character), ~ na_if(.x, ""))) %>%
-        mutate(created = as.Date(created, format = "%Y-%m-%d")) %>%
-        type_convert()
+    if(is.data.frame(df)){
+        df = df %>%
+            mutate(across(where(is.character), ~ na_if(.x, ""))) %>%
+            mutate(created = as.Date(created, format = "%Y-%m-%d")) %>%
+            arrange(created) %>%
+            type_convert()
+    }
 
     return(df)
 

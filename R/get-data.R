@@ -103,7 +103,7 @@ setMethod(
 
             # Dispatcher
 
-            switch(market_code,
+            return(switch(market_code,
 
                    "BRVM" = .GET_data_BRVM(ticker = ticker,Period = Period,from = from,to = to,output_format = output_format),
                    "BVC"  = .GET_data_BVC(ticker = ticker,Period = Period,from = from,to = to,output_format = output_format),
@@ -112,13 +112,10 @@ setMethod(
                    rlang::inform(
                        paste0("No GET_tickers() method defined for ", market_code)
                    )
-            )
+            ))
 
                 },
                 error = function(e) {
-                    message("Make sure you have an active internet connection")
-                },
-                warning = function(w) {
                     message("Make sure you have an active internet connection")
                 }
             )
