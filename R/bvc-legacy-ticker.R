@@ -1,4 +1,327 @@
 
+
+#' Internal cache for build ID
+#'
+#' This internal function creates and returns a cache environment that stores
+#' the build ID and its timestamp. It is used internally by `get_build_id`
+#' to reduce API calls.
+#'
+#' @return Environment with cached build data.
+#' @keywords internal
+#' @rdname get_build_cache
+get_build_cache <- local({
+    cache <- new.env(parent = emptyenv())
+    cache$build_id <- NULL
+    cache$timestamp <- 0
+    cache$cache_duration <- 3600
+
+    function() cache
+})
+
+
+#' Retrieve build ID from Casablanca Stock Exchange
+#'
+#' @description
+#' This function retrieves a unique build ID from the homepage of the Casablanca Stock Exchange (CSE). The build ID is extracted from a JSON script embedded in the page. The result is cached internally for efficiency, so it is reused for subsequent calls within a one-hour window unless a refresh is forced.
+#'
+#' @param force_refresh Logical. If TRUE, the function bypasses the cache and fetches a fresh build ID from the website.
+#'
+#' @return A character string representing the build ID. Returns NULL if retrieval fails.
+#'
+#' @examples
+#' \dontrun{
+#' build_id <- get_build_id()
+#' }
+#'
+#' @note
+#' This function is intended for internal use only. It is not exported and should not be called directly by users.
+#'
+#' @family internal
+#' @importFrom httr GET content add_headers status_code timeout
+#' @importFrom jsonlite fromJSON
+#' @importFrom stringr str_match
+#' @rdname get_build_id
+get_build_id <- function(force_refresh = FALSE) {
+    cache <- get_build_cache()
+
+    current_time <- as.numeric(Sys.time())
+
+    # Use cached build ID if valid and no force refresh
+    if (!force_refresh &&
+        !is.null(cache$build_id) &&
+        (current_time - cache$timestamp) < cache$cache_duration) {
+        message("Using cached build ID")
+        return(cache$build_id)
+    }
+
+    # Set up request headers
+    headers <- httr::add_headers(
+        "Upgrade-Insecure-Requests" = "1",
+        "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "sec-ch-ua" = '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+        "sec-ch-ua-mobile" = "?0",
+        "sec-ch-ua-platform" = '"Windows"'
+    )
+
+    tryCatch({
+        message("Fetching build ID from Casablanca Stock Exchange homepage...")
+        res <- httr::GET(
+            "https://www.casablanca-bourse.com/fr",
+            headers,
+            httr::timeout(30)
+        )
+
+        if (httr::status_code(res) != 200) {
+            message("Failed to access homepage. Status code: ", httr::status_code(res))
+            return(NULL)
+        }
+
+        html <- httr::content(res, as = "text", encoding = "UTF-8")
+
+        # Extract JSON embedded in the page
+        match <- stringr::str_match(
+            html,
+            '<script id="__NEXT_DATA__" type="application/json">(.*?)</script>'
+        )
+
+        if (is.na(match[1, 2])) {
+            message("Could not find the __NEXT_DATA__ script in the page")
+            return(NULL)
+        }
+
+        # Safely parse the JSON
+        next_data <- tryCatch(
+            jsonlite::fromJSON(match[1, 2]),
+            error = function(e) NULL
+        )
+
+        if (is.null(next_data) || is.null(next_data$buildId)) {
+            # message("build ID not found in extracted JSON")
+            return(NULL)
+        }
+
+        build_id <- next_data$buildId
+
+        # Save build ID to cache
+        cache$build_id <- build_id
+        cache$timestamp <- current_time
+
+        #message("Build ID successfully retrieved: ", build_id)
+        return(build_id)
+
+    }, error = function(e) {
+        #message("Error while retrieving build ID: ", e$message)
+        return(NULL)
+    })
+}
+
+
+
+#' Retrieve Cached Build ID (Wrapper)
+#'
+#' @description
+#' Wrapper function that ensures a build ID is always returned by leveraging
+#' the caching mechanism. If a fresh value cannot be retrieved, it falls back
+#' to the last cached value when available.
+#'
+#' @param force_refresh Logical. If TRUE, forces a refresh of the build ID.
+#'
+#' @return A character string containing the build ID, or NULL if unavailable.
+#'
+#' @keywords internal
+get_build_id_cached <- function(force_refresh = FALSE) {
+
+    cache <- get_build_cache()
+    current_time <- as.numeric(Sys.time())
+
+    # -----------------------------
+    # Step 1: Check valid cache
+    # -----------------------------
+    if (!force_refresh &&
+        !is.null(cache$build_id) &&
+        (current_time - cache$timestamp) < cache$cache_duration) {
+
+        # message("Using cached build ID: ", cache$build_id)
+        return(cache$build_id)
+    }
+
+    # -----------------------------
+    # Step 2: Try to fetch new value
+    # -----------------------------
+    new_build_id <- get_build_id(force_refresh = TRUE)
+
+    # -----------------------------
+    # Step 3: If success → return it
+    # -----------------------------
+    if (!is.null(new_build_id)) {
+        return(new_build_id)
+    }
+
+    # -----------------------------
+    # Step 4: Fallback to old cache
+    # -----------------------------
+    if (!is.null(cache$build_id)) {
+        return(cache$build_id)
+    }
+
+    # -----------------------------
+    # Step 5: No value available
+    # -----------------------------
+    # message("No build ID available")
+    return(NULL)
+}
+
+
+
+
+#' Extract ticker widget values from API response
+#'
+#' Searches for the "bourse_dynamic_field:ticker" widget inside both
+#' internal blocks and paragraph components of a JSON API response.
+#' If found, extracts and returns the `mw_values` object contained
+#' in the widget payload.
+#'
+#' @param res A parsed JSON response object (typically from httr::content)
+#'        containing `pageProps$node` with nested blocks and paragraphs.
+#'
+#' @return A list containing ticker `mw_values` if found, otherwise `NULL`.
+#'
+#' @details
+#' The function inspects:
+#' \itemize{
+#'   \item `node$internal_blocks`
+#'   \item `node$field_vactory_paragraphs`
+#' }
+#'
+#' It parses the `widget_data` JSON field and extracts:
+#' `components[[1]]$bande$mw_values`
+#'
+#' The first valid match is returned.
+#'
+#' @importFrom jsonlite fromJSON
+find_ticker_widget <- function(res) {
+
+    # Fonction qui parse le widget_data d'un bloc/paragraph
+    extract_from_widget_data <- function(widget_data_str) {
+        tryCatch({
+            wd <- fromJSON(widget_data_str, simplifyVector = FALSE)
+            # Vérifier que c'est bien un ticker avec mw_values
+            mw <- wd$components[[1]]$bande$mw_values
+            if (!is.null(mw)) return(mw)
+        }, error = function(e) NULL)
+        return(NULL)
+    }
+
+    node <- res$pageProps$node
+
+    # 1. Chercher dans internal_blocks
+    for (block in node$internal_blocks) {
+        if (!is.null(block$content$widget_id) &&
+            block$content$widget_id == "bourse_dynamic_field:ticker") {
+            mw <- extract_from_widget_data(block$content$widget_data)
+            if (!is.null(mw)) return(mw)
+        }
+    }
+
+    # 2. Chercher dans field_vactory_paragraphs
+    for (para in node$field_vactory_paragraphs) {
+        comp <- para$field_vactory_component
+        if (!is.null(comp$widget_id) &&
+            comp$widget_id == "bourse_dynamic_field:ticker") {
+            mw <- extract_from_widget_data(comp$widget_data)
+            if (!is.null(mw)) return(mw)
+        }
+    }
+
+    return(NULL)
+}
+
+
+
+
+#' Retrieve market classes and market type from Casablanca Stock Exchange API
+#'
+#' Downloads the live market listing page from the Casablanca Stock Exchange
+#' Next.js API, extracts the ticker widget, and returns active market classes
+#' along with the market type identifier.
+#'
+#' @return A list with two elements:
+#' \itemize{
+#'   \item `class`: A tibble containing only active classes (non-zero values)
+#'   \item `marche`: A character or numeric identifier of the market type
+#' }
+#'
+#' @details
+#' The function:
+#' \enumerate{
+#'   \item Retrieves a dynamic build ID using `get_build_id_cached()`
+#'   \item Sends a GET request to the Casablanca Stock Exchange API
+#'   \item Extracts ticker data using `find_ticker_widget()`
+#'   \item Filters classes where value != 0
+#' }
+#'
+#' If no ticker data is found, the function returns `NULL`.
+#'
+#' @import httr
+#' @import jsonlite
+#' @import tibble
+#'
+#' @examples
+#' \dontrun{
+#' result <- .get_class_marche()
+#' result$class
+#' result$marche
+#' }
+.get_class_marche = function() {
+
+
+    buildID = get_build_id_cached()
+
+    headers = c(
+        `sec-ch-ua-platform` = '"Windows"',
+        `x-vactory-data-loader` = paste0("/_next/data/",buildID,"/en/live-market/marche-actions-listing.json?slug=live-market&slug=marche-actions-listing"),
+        Referer = "https://www.casablanca-bourse.com/en/live-market/marche-actions-listing",
+        `User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+        `sec-ch-ua` = '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
+        `sec-ch-ua-mobile` = "?0"
+    )
+
+    params = list(
+        slug = "live-market",
+        slug = "marche-actions-listing"
+    )
+
+
+    url = paste0(
+        "https://www.casablanca-bourse.com/_next/data/",buildID,"/en/live-market/marche-actions-listing.json"
+    )
+    req <- httr::GET(url = url, httr::add_headers(.headers=headers), query = params)
+    res <- content(req, as = "parsed")
+
+
+    mw_values <- find_ticker_widget(res)
+
+    if(is.null(mw_values)) {
+        return(NULL)
+    }
+
+    # Extraire marché et classes
+    type_marche <- mw_values$type_marche  # ex: "59"
+    classes     <- mw_values$classes       # liste nommée
+
+    # Garder uniquement les classes actives (valeur != 0)
+    classes = as.tibble(classes)
+    classes_actives = classes[, which(classes[1, ] != 0)]
+
+    return(list(
+        class = as.numeric(classes_actives),
+        marche = as.numeric(type_marche)
+    ))
+
+}
+
+
+
 #' Mettre a jour l'objet Market avec les tickers de la BVC
 #'
 #' @description
@@ -28,7 +351,6 @@
 .GET_tickers_BVC = function() {
     tryCatch(
         {
-
             # General extraction
 
             ticker_data = bvc_share_index_info()
@@ -147,10 +469,15 @@ bvc_share_index_info = function() {
 #'
 #' @examples
 #' \dontrun{
-#' df_market <- bvc_market_share_info(marche = 59, classes = c(50))
+#' df_market <- bvc_market_share_info(marche = NULL, classes = NULL)
 #' head(df_market)
 #' }
-bvc_market_share_info <- function(marche = 59, classes = c(50)) {
+bvc_market_share_info <- function(marche = NULL, classes = NULL) {
+
+    class_marche_value = .get_class_marche()
+
+    if(is.null(marche)) marche = class_marche_value$marche
+    if(is.null(classes)) classes = class_marche_value$class
 
     url <- "https://www.casablanca-bourse.com/api/proxy/fr/api/bourse/dashboard/ticker"
 
@@ -159,11 +486,22 @@ bvc_market_share_info <- function(marche = 59, classes = c(50)) {
         "class[]" = classes
     )
 
+    headers = c(
+        `sec-ch-ua-platform` = '"Windows"',
+        Referer = "https://www.casablanca-bourse.com/en/live-market/marche-actions-listing",
+        `User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+        Accept = "application/vnd.api+json",
+        `sec-ch-ua` = '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
+        `Content-Type` = "application/vnd.api+json",
+        `sec-ch-ua-mobile` = "?0"
+    )
+
     # Appel API
     res <- try(httr::GET(url,
                          query = params,
+                         httr::add_headers(.headers=headers),
                          httr::config(ssl_verifypeer = FALSE),
-                         httr::timeout(10)),
+                         httr::timeout(60)),
                silent = TRUE)
 
     if (inherits(res, "try-error")) {
@@ -513,6 +851,7 @@ get_indices_list_with_capitalization <- function(formatted = TRUE) {
 #' @importFrom purrr map map_dfr
 #' @importFrom stringr str_extract
 #' @importFrom tibble as_tibble
+#'
 get_bvc_index = function(){
 
     url_grouped_index = "https://www.casablanca-bourse.com/api/proxy/en/api/bourse/dashboard/grouped_index_watch?"

@@ -52,7 +52,7 @@
 #'
 #' @importFrom httr GET add_headers content set_cookies
 #' @importFrom jsonlite fromJSON
-#' @importFrom dplyr mutate
+#' @importFrom dplyr mutate arrange
 #' @importFrom rvest read_html html_node html_nodes html_attr html_text
 #'
 #' @author
@@ -101,7 +101,8 @@ ngx_share_index_info = function(){
     txt <- content(res, as = "text", encoding = "UTF-8")
 
     df_share <- fromJSON(txt) %>%
-        mutate(Type = "Share",Country.code = "NG")
+        mutate(Type = "Share",Country.code = "NG") %>%
+        arrange(Symbol)
 
     #Index
 
@@ -167,7 +168,7 @@ ngx_share_index_info = function(){
 #'
 #' @author Koffi Frederic SESSIE
 #' @author Olabiyi Aurel Geoffroy ODJO
-#'
+#' @importFrom dplyr select rename
 #' @examples
 #' \dontrun{
 #' # Retrieve NGX shares and indexes

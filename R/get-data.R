@@ -110,7 +110,7 @@ setMethod(
                    "GSE"  = .GET_data_GSE(ticker = ticker,Period = Period,from = from,to = to,output_format = output_format),
 
                    rlang::inform(
-                       paste0("No GET_tickers() method defined for ", market_code)
+                       paste("No GET_data() method defined for", market_code)
                    )
             ))
 

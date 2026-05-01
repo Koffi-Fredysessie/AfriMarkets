@@ -1,5 +1,6 @@
 globalVariables(
-    names = c("all_markets","Date", "Ticker", "Open", "High", "Low", "Close", "Volume","index_url","field_transact_time","created",
+    names = c(
+            "all_markets","Date", "Ticker", "Open", "High", "Low", "Close", "Volume","index_url","field_transact_time","created",
               "CompanyName",
               "NatureofBusiness",
               ".stationarity_core",

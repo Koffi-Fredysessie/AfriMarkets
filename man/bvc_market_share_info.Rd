@@ -4,7 +4,7 @@
 \alias{bvc_market_share_info}
 \title{Recuperer les donnees de marche en temps reel (Ticker) de la Bourse de Casablanca}
 \usage{
-bvc_market_share_info(marche = 59, classes = c(50))
+bvc_market_share_info(marche = NULL, classes = NULL)
 }
 \arguments{
 \item{marche}{Integer. L'identifiant du marche (ex: 59 pour le marche central). Par defaut \code{59}.}
@@ -22,7 +22,7 @@ pour un marche et des classes d'actifs specifiques.
 }
 \examples{
 \dontrun{
-df_market <- bvc_market_share_info(marche = 59, classes = c(50))
+df_market <- bvc_market_share_info(marche = NULL, classes = NULL)
 head(df_market)
 }
 }

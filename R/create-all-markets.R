@@ -98,8 +98,6 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Bonds = data.frame(),
                     Ticker_full_name = ""
                 )
-
-
             )
         },
         error = function(e) {
