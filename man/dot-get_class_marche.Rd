@@ -10,7 +10,7 @@
 A list with two elements:
 \itemize{
 \item \code{class}: A tibble containing only active classes (non-zero values)
-\item \code{marche}: A character or numeric identifier of the market type
+\item \code{marche}: A numeric identifier of the market type
 }
 }
 \description{
@@ -19,15 +19,17 @@ Next.js API, extracts the ticker widget, and returns active market classes
 along with the market type identifier.
 }
 \details{
-The function:
+The function performs the following steps:
 \enumerate{
 \item Retrieves a dynamic build ID using \code{get_build_id_cached()}
-\item Sends a GET request to the Casablanca Stock Exchange API
+\item Builds request headers required by the Casablanca Stock Exchange API
+\item Sends an HTTP GET request using \code{httr::GET()}
+\item Parses the response using \code{httr::content()}
 \item Extracts ticker data using \code{find_ticker_widget()}
-\item Filters classes where value != 0
+\item Filters active classes where values are non-zero
 }
 
-If no ticker data is found, the function returns \code{NULL}.
+If no ticker widget is found, the function returns \code{NULL}.
 }
 \examples{
 \dontrun{

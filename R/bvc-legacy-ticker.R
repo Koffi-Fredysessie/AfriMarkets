@@ -50,7 +50,7 @@ get_build_id <- function(force_refresh = FALSE) {
     if (!force_refresh &&
         !is.null(cache$build_id) &&
         (current_time - cache$timestamp) < cache$cache_duration) {
-        message("Using cached build ID")
+        #message("Using cached build ID")
         return(cache$build_id)
     }
 
@@ -85,7 +85,7 @@ get_build_id <- function(force_refresh = FALSE) {
         )
 
         if (is.na(match[1, 2])) {
-            message("Could not find the __NEXT_DATA__ script in the page")
+            #message("Could not find the __NEXT_DATA__ script in the page")
             return(NULL)
         }
 
@@ -96,7 +96,7 @@ get_build_id <- function(force_refresh = FALSE) {
         )
 
         if (is.null(next_data) || is.null(next_data$buildId)) {
-            # message("build ID not found in extracted JSON")
+            #message("build ID not found in extracted JSON")
             return(NULL)
         }
 
@@ -106,11 +106,11 @@ get_build_id <- function(force_refresh = FALSE) {
         cache$build_id <- build_id
         cache$timestamp <- current_time
 
-        #message("Build ID successfully retrieved: ", build_id)
+        message("Build ID successfully retrieved: ", build_id)
         return(build_id)
 
     }, error = function(e) {
-        #message("Error while retrieving build ID: ", e$message)
+        message("Error while retrieving build ID: ", e$message)
         return(NULL)
     })
 }
@@ -238,7 +238,6 @@ find_ticker_widget <- function(res) {
 
 
 
-
 #' Retrieve market classes and market type from Casablanca Stock Exchange API
 #'
 #' Downloads the live market listing page from the Casablanca Stock Exchange
@@ -248,23 +247,25 @@ find_ticker_widget <- function(res) {
 #' @return A list with two elements:
 #' \itemize{
 #'   \item `class`: A tibble containing only active classes (non-zero values)
-#'   \item `marche`: A character or numeric identifier of the market type
+#'   \item `marche`: A numeric identifier of the market type
 #' }
 #'
 #' @details
-#' The function:
+#' The function performs the following steps:
 #' \enumerate{
 #'   \item Retrieves a dynamic build ID using `get_build_id_cached()`
-#'   \item Sends a GET request to the Casablanca Stock Exchange API
+#'   \item Builds request headers required by the Casablanca Stock Exchange API
+#'   \item Sends an HTTP GET request using `httr::GET()`
+#'   \item Parses the response using `httr::content()`
 #'   \item Extracts ticker data using `find_ticker_widget()`
-#'   \item Filters classes where value != 0
+#'   \item Filters active classes where values are non-zero
 #' }
 #'
-#' If no ticker data is found, the function returns `NULL`.
+#' If no ticker widget is found, the function returns `NULL`.
 #'
-#' @import httr
-#' @import jsonlite
-#' @import tibble
+#' @importFrom httr GET content add_headers
+#' @importFrom jsonlite fromJSON
+#' @importFrom tibble as_tibble
 #'
 #' @examples
 #' \dontrun{
@@ -310,7 +311,7 @@ find_ticker_widget <- function(res) {
     classes     <- mw_values$classes       # liste nommée
 
     # Garder uniquement les classes actives (valeur != 0)
-    classes = as.tibble(classes)
+    classes = as_tibble(classes)
     classes_actives = classes[, which(classes[1, ] != 0)]
 
     return(list(
@@ -351,7 +352,7 @@ find_ticker_widget <- function(res) {
 .GET_tickers_BVC = function() {
     tryCatch(
         {
-            # General extraction
+
 
             ticker_data = bvc_share_index_info()
             ticker_data = ticker_data[order(ticker_data$Ticker),]

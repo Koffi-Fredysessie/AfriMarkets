@@ -26,7 +26,8 @@ globalVariables(
               ".GET_data_GSE",
               "get_bvc_index",
               "get_index_code",
-              "gse_share_info"
+              "gse_share_info",
+              ".get_class_marche"
 
               )
     )

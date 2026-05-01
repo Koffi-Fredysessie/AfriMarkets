@@ -16,8 +16,9 @@ library(rvest)
 library(purrr)
 library(stringr)
 library(readr)
-
 library(testthat)
+
+
 library(AfriMarkets)
 
 
