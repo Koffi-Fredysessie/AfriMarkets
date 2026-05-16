@@ -18,46 +18,11 @@ setGeneric("CREATE_ALL_MARKETS", function(object) standardGeneric("CREATE_ALL_MA
 setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) {
     tryCatch(
         {
-            # BRVM (1)
+            # =========================
+            # AFRICAN MARKETS
+            # =========================
 
             list(
-                BRVM_MARKET = african_market(
-                    Market_short_name = "BRVM",
-                    Market_full_name = "BOURSE REGIONALE DES VALEURS MOBILIERES",
-                    Official_url = "https://www.brvm.org/",
-                    Market_url = "https://www.sikafinance.com/",
-                    Market_data_url = c(
-                        "https://www.sikafinance.com/api/general/GetHistos"
-                    ),
-                    List = "",
-                    ListShares = "",
-                    ListIndexes = "",
-                    ListBonds = "",
-                    Indexes = data.frame(),
-                    Shares = data.frame(),
-                    Bonds = data.frame(),
-                    Ticker_full_name = ""
-                ),
-
-                # BVC (2)
-
-                BVC_MARKET = african_market(
-                    Market_short_name = "BVC",
-                    Market_full_name = "BOURSE DE CASABLANCA / CASABLANCA STOCK EXCHANGE",
-                    Official_url = "https://www.casablanca-bourse.com",
-                    Market_url = "",
-                    Market_data_url = c(
-                        ""
-                    ),
-                    List = "",
-                    ListShares = "",
-                    ListIndexes = "",
-                    ListBonds = "",
-                    Indexes = data.frame(),
-                    Shares = data.frame(),
-                    Bonds = data.frame(),
-                    Ticker_full_name = ""
-                ),
 
                 # GSE (3)
 
@@ -79,16 +44,150 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Ticker_full_name = ""
                 ),
 
-                # NGX (4)
-
+                # Nigeria (20)
                 NGX_MARKET = african_market(
                     Market_short_name = "NGX",
                     Market_full_name = "NIGERIAN EXCHANGE GROUP",
                     Official_url = "https://www.ngxgroup.com",
-                    Market_url = "",
-                    Market_data_url = c(
-                        ""
-                    ),
+                    Market_url = "/equities/nigeria",
+                    Market_data_url = c("/equities/nigeria"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+                # South Africa (110)
+                JSE_MARKET = african_market(
+                    Market_short_name = "JSE",
+                    Market_full_name = "JOHANNESBURG STOCK EXCHANGE",
+                    Official_url = "https://www.jse.co.za",
+                    Market_url = "/equities/south-africa",
+                    Market_data_url = c("/equities/south-africa"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+                # Morocco (105)
+                MSE_MARKET = african_market(
+                    Market_short_name = "MSE",
+                    Market_full_name = "MOROCCO STOCK EXCHANGE",
+                    Official_url = "https://www.casablancabourse.com",
+                    Market_url = "/equities/morocco",
+                    Market_data_url = c("/equities/morocco"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+                # Egypt (59)
+                EGX_MARKET = african_market(
+                    Market_short_name = "EGX",
+                    Market_full_name = "EGYPTIAN EXCHANGE",
+                    Official_url = "https://www.egx.com.eg",
+                    Market_url = "/equities/egypt",
+                    Market_data_url = c("/equities/egypt"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+                # Kenya (57)
+                NSE_KENYA_MARKET = african_market(
+                    Market_short_name = "NSE",
+                    Market_full_name = "NAIROBI SECURITIES EXCHANGE",
+                    Official_url = "https://www.nse.co.ke",
+                    Market_url = "/equities/kenya",
+                    Market_data_url = c("/equities/kenya"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+                # Côte d'Ivoire (78)
+                BRVM_MARKET = african_market(
+                    Market_short_name = "BRVM",
+                    Market_full_name = "BOURSE REGIONALE DES VALEURS MOBILIERES",
+                    Official_url = "https://www.brvm.org",
+                    Market_url = "/equities/ivory-coast",
+                    Market_data_url = c("https://www.sikafinance.com/api/general/GetHistos","/equities/ivory-coast"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+
+                # Tunisia (202)
+                TUNIS_MARKET = african_market(
+                    Market_short_name = "TSE",
+                    Market_full_name = "TUNIS STOCK EXCHANGE",
+                    Official_url = "https://www.bvmt.com.tn",
+                    Market_url = "/equities/tunisia",
+                    Market_data_url = c("/equities/tunisia"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+                # Botswana (163)
+                BSE_MARKET = african_market(
+                    Market_short_name = "BSE",
+                    Market_full_name = "BOTSWANA STOCK EXCHANGE",
+                    Official_url = "https://www.bse.co.bw",
+                    Market_url = "/equities/botswana",
+                    Market_data_url = c("/equities/botswana"),
+                    List = "",
+                    ListShares = "",
+                    ListIndexes = "",
+                    ListBonds = "",
+                    Indexes = data.frame(),
+                    Shares = data.frame(),
+                    Bonds = data.frame(),
+                    Ticker_full_name = ""
+                ),
+
+                # Mauritius (188)
+                SEM_MARKET = african_market(
+                    Market_short_name = "SEM",
+                    Market_full_name = "STOCK EXCHANGE OF MAURITIUS",
+                    Official_url = "https://www.stockexchangeofmauritius.com",
+                    Market_url = "/equities/mauritius",
+                    Market_data_url = c("/equities/mauritius"),
                     List = "",
                     ListShares = "",
                     ListIndexes = "",
@@ -98,6 +197,7 @@ setMethod("CREATE_ALL_MARKETS", signature(object = "missing"), function(object) 
                     Bonds = data.frame(),
                     Ticker_full_name = ""
                 )
+
             )
         },
         error = function(e) {

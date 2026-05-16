@@ -2,76 +2,93 @@
 % Please edit documentation in R/tools-stationarity-test.R
 \name{stationarity_test}
 \alias{stationarity_test}
-\alias{.stationarity_core}
 \alias{stationarity_test,numeric-method}
 \alias{stationarity_test,ts-method}
-\title{Stationarity test for univariate data}
+\title{Stationarity Tests for Univariate Time Series}
 \usage{
 stationarity_test(x, type.test = "ALL")
-
-.stationarity_core(x, type.test)
 
 \S4method{stationarity_test}{numeric}(x, type.test = "ALL")
 
 \S4method{stationarity_test}{ts}(x, type.test = "ALL")
 }
 \arguments{
-\item{x}{A numeric vector or a time series object (\code{ts}).}
+\item{x}{A \code{numeric} vector or a \code{ts} object. \code{NA} values
+are removed automatically before testing.}
 
-\item{type.test}{A character vector specifying which test(s) to perform.
-Accepted values include:
-\code{"Box-Pierce and Ljung-Box"},
-\code{"Kwiatkowski-Phillips-Schmidt-Shin (KPSS)"},
-\code{"Augmented Dickey-Fuller Test (ADF)"},
-\code{"Phillips-Perron Unit Root Test"},
-or \code{"ALL"} for all tests.}
+\item{type.test}{A \code{character} vector of test name(s) to perform.
+Accepted values (case-insensitive):
+\itemize{
+\item \code{"box-pierce and ljung-box"}
+\item \code{"kwiatkowski-phillips-schmidt-shin (kpss)"}
+\item \code{"augmented dickey-fuller test (adf)"}
+\item \code{"phillips-perron unit root test"}
+\item \code{"ALL"} — runs all four tests (default).
+}}
 }
 \value{
-A named list containing p-values for each selected test.
-Returns \code{NA} if the input data is constant or invalid.
+A named \code{list} of \code{numeric} p-values, one element per selected
+test. Each element is \code{NA_real_} when the series does not meet the
+minimum sample size requirement for that test.
+Returns \code{NA} (scalar) when \code{x} is constant or has fewer than
+two distinct observations.
 }
 \description{
-Performs multiple statistical tests to assess the stationarity of a univariate
-numeric vector or time series. The function supports several commonly used
-stationarity tests and can return results for one or multiple methods.
+Performs one or more statistical tests to assess the stationarity of a
+univariate numeric vector or time series object. Results are returned as a
+named list of p-values, one entry per selected test.
 }
 \details{
-The function evaluates stationarity using different statistical tests depending
-on the selected \code{type.test}. If \code{"ALL"} is specified, all available
-tests are performed.
+The following tests are available. Each has a minimum sample size
+requirement; if the series is too short, the corresponding p-value is
+\code{NA} and a diagnostic message is emitted.
 
-Missing values are automatically removed before applying the tests.
-
-Available methods include:
-\itemize{
-\item \code{"Box-Pierce and Ljung-Box"} — autocorrelation test
-\item \code{"Kwiatkowski-Phillips-Schmidt-Shin (KPSS)"} — stationarity around a deterministic trend
-\item \code{"Augmented Dickey-Fuller Test (ADF)"} — unit root test
-\item \code{"Phillips-Perron Unit Root Test"} — unit root test robust to serial correlation
+\tabular{lll}{
+\strong{Key (type.test)}                          \tab \strong{Null hypothesis}          \tab \strong{Min. n} \cr
+\code{"box-pierce and ljung-box"}                 \tab No autocorrelation                \tab 3              \cr
+\code{"kwiatkowski-phillips-schmidt-shin (kpss)"} \tab Series is stationary              \tab 3              \cr
+\code{"augmented dickey-fuller test (adf)"}       \tab Unit root present (non-stationary)\tab 7              \cr
+\code{"phillips-perron unit root test"}           \tab Unit root present (non-stationary)\tab 4              \cr
 }
 
-Each test has a minimum sample size requirement. If the condition is not met,
-the corresponding result will return \code{NA}.
+Matching of \code{type.test} values is \strong{case-insensitive}. Unrecognised
+test names are silently dropped with a diagnostic message; if none of the
+supplied names are valid, the function aborts with an informative error.
+
+\code{NA} and \code{NaN} values are removed via \code{stats::na.omit()}
+before any test is applied. Constant series (all values identical) are
+detected and return \code{NA} immediately.
 }
 \examples{
 \donttest{
-library(tseries)
+set.seed(42)
+x_stationary    <- rnorm(100)
+x_nonstationary <- cumsum(rnorm(100))   # random walk
 
-x <- ts(c(100, 102, 101, 105, 107, NA, 110, 108))
-x1 = impute.data(x)
 # Single test
-stationarity_test(x1, "Augmented Dickey-Fuller Test (ADF)")
+stationarity_test(x_stationary, "augmented dickey-fuller test (adf)")
 
-# Multiple tests
-stationarity_test(x1, c("kpss", "phillips-perron unit root test"))
+# Multiple tests (case-insensitive)
+stationarity_test(
+  x_nonstationary,
+  c("kwiatkowski-phillips-schmidt-shin (kpss)",
+    "phillips-perron unit root test")
+)
 
-# All tests
-stationarity_test(x1, "ALL")
+# All tests at once
+stationarity_test(x_stationary, "ALL")
+
+# Works on ts objects too
+stationarity_test(ts(x_stationary, frequency = 12), "ALL")
 }
 
 }
 \seealso{
-\code{\link{normality_test}}
+\code{\link{normality_test}},
+\code{\link[tseries]{kpss.test}},
+\code{\link[tseries]{adf.test}},
+\code{\link[tseries]{pp.test}},
+\code{\link[stats]{Box.test}}
 
 Other statistical_tests: 
 \code{\link{.normality_test_core}()}

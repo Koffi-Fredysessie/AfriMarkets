@@ -7,47 +7,152 @@
 .GET_data_GSE(
   ticker = "ALL",
   Period = "daily",
-  from = Sys.Date() - 89,
+  from = Sys.Date() - 100,
   to = Sys.Date(),
-  output_format = c("by_col", "by_row")
+  output_format = c("all", "by_col", "by_row")
 )
 }
 \arguments{
-\item{ticker}{Character vector of stock tickers. Use \code{"ALL"} to retrieve all available tickers.}
+\item{ticker}{A character vector of ticker symbols to retrieve.
+Special values include:
+\itemize{
+\item \code{"ALL"}: retrieve all available instruments
+\item \code{"ALL SHARES"}: retrieve only shares
+\item \code{"ALL INDEXES"}: retrieve only indexes
+}}
 
-\item{Period}{Character string defining data frequency (currently not used, default is "daily").}
+\item{Period}{A character string defining the data frequency.
+Currently only \code{"daily"} is supported.}
 
-\item{from}{Start date for data extraction (Date or character).}
+\item{from}{Start date (character or \code{Date}).
+Default is 100 days before today.}
 
-\item{to}{End date for data extraction (Date or character).}
+\item{to}{End date (character or \code{Date}).
+Default is today.}
 
-\item{output_format}{Output structure: \code{"by_col"} (default) for long format,
-or \code{"by_row"} for wide format.}
+\item{output_format}{Output structure specification:
+\itemize{
+\item \code{"by_col"}: long format with a \code{Ticker} column
+\item \code{"by_row"}: wide format with ticker-prefixed columns
+\item \code{"all"}: returns both formats as a named list
+}}
 }
 \value{
-A data frame containing historical stock market data with standardized columns:
-Date, Ticker, YearHigh, YearLow, PrevCloseVWAP, OpenPrice, LastPrice,
-CloseVWAP, PriceChange, BidClose, AskClose, Volume, ValueTraded.
+Depending on \code{output_format}, returns:
+
+\itemize{
+
+\item A long-format data frame (\code{"by_col"}) containing:
+\code{Date}, \code{Ticker}, \code{Open}, \code{High},
+\code{Low}, \code{Close}, and \code{Volume}.
+
+\item A wide-format data frame (\code{"by_row"}) where each
+variable is prefixed by ticker names
+(e.g. \code{ACCESS.Close}).
+
+\item A named list containing both formats when
+\code{output_format = "all"}.
+}
 }
 \description{
-This function extracts historical daily stock market data from the Ghana Stock Exchange (GSE)
-web portal for one or multiple tickers. It sends a POST request to the GSE DataTables API,
-retrieves the raw JSON response, and formats it into a clean data frame.
+Internal function used to retrieve historical stock market data from the
+Ghana Stock Exchange (GSE) web portal.
+
+The function sends POST requests to the GSE DataTables API endpoint,
+extracts the returned JSON data, cleans and standardizes the results,
+and formats the output into long or wide structures.
+
+It supports single or multiple tickers, flexible date ranges,
+automatic request chunking, and multiple output formats.
 }
 \details{
-The function performs the following steps:
+The function performs the following operations:
+
 \enumerate{
-\item Retrieves the list of available tickers using \code{GET_tickers("GSE")}.
-\item Filters input tickers or uses all available tickers when \code{"ALL"} is specified.
-\item Sends an HTTP POST request to the GSE web portal DataTables endpoint.
-\item Extracts and parses JSON response data.
-\item Renames and standardizes column names.
-\item Optionally reshapes output either by column or by row.
+\item Retrieves available GSE tickers using \code{GET_tickers("GSE")}.
+
+\item Retrieves the required \code{wdtNonce} authentication token
+from the GSE trading portal.
+
+\item Validates ticker symbols and requested date ranges.
+
+\item Splits the requested period into chunks of approximately
+500 days to reduce request size and improve reliability.
+
+\item Sends POST requests to the GSE DataTables AJAX endpoint.
+
+\item Parses and standardizes the returned JSON data.
+
+\item Keeps and formats the following variables:
+\code{Date}, \code{Open}, \code{Low},
+\code{High}, \code{Close}, and \code{Volume}.
+
+\item Merges all ticker datasets into the requested output structure.
+}
+
+A small random delay is introduced between requests in order to
+reduce server load and limit request throttling.
+}
+\section{API Source}{
+
+Data are retrieved from the Ghana Stock Exchange web portal:
+\url{https://gse.com.gh/}
+}
+
+\section{Limitations}{
+
+\itemize{
+\item Only daily frequency is currently supported.
+
+\item The function depends on the internal structure of the
+GSE web portal and may stop working if the endpoint changes.
+
+\item Historical availability depends on the GSE database.
 }
 }
-\note{
-This function relies on a private web endpoint of the GSE portal and may break if
-the underlying HTML structure or API changes. It includes retry handling and basic
-error messages for unavailable tickers.
+
+\section{Error Handling}{
+
+\itemize{
+\item Invalid tickers are skipped with warning messages.
+
+\item Failed HTTP requests are retried automatically.
+
+\item The function stops if no valid data can be retrieved.
+}
+}
+
+\section{Caching}{
+
+The latest successful download is stored inside \code{.pkg_env}
+for reuse within the current R session.
+}
+
+\examples{
+\dontrun{
+
+# Retrieve a single ticker
+df <- .GET_data_GSE(
+  ticker = "ACCESS",
+  from = "2024-01-01",
+  to = "2024-06-01"
+)
+
+# Retrieve all shares
+df_all <- .GET_data_GSE(
+  ticker = "ALL SHARES"
+)
+
+# Retrieve both output formats
+df_both <- .GET_data_GSE(
+  ticker = c("ACCESS", "CAL"),
+  output_format = "all"
+)
+}
+
+}
+\seealso{
+\code{\link{GET_tickers}},
+\code{\link{output_data}}
 }
 \keyword{internal}

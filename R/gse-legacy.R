@@ -317,79 +317,190 @@ get_gse_index_share = function(){
 
 
 
-
 #' Retrieve Historical Stock Data from GSE Web Portal
 #'
 #' @description
-#' This function extracts historical daily stock market data from the Ghana Stock Exchange (GSE)
-#' web portal for one or multiple tickers. It sends a POST request to the GSE DataTables API,
-#' retrieves the raw JSON response, and formats it into a clean data frame.
+#' Internal function used to retrieve historical stock market data from the
+#' Ghana Stock Exchange (GSE) web portal.
 #'
-#' @details
-#' The function performs the following steps:
-#' \enumerate{
-#'   \item Retrieves the list of available tickers using \code{GET_tickers("GSE")}.
-#'   \item Filters input tickers or uses all available tickers when \code{"ALL"} is specified.
-#'   \item Sends an HTTP POST request to the GSE web portal DataTables endpoint.
-#'   \item Extracts and parses JSON response data.
-#'   \item Renames and standardizes column names.
-#'   \item Optionally reshapes output either by column or by row.
+#' The function sends POST requests to the GSE DataTables API endpoint,
+#' extracts the returned JSON data, cleans and standardizes the results,
+#' and formats the output into long or wide structures.
+#'
+#' It supports single or multiple tickers, flexible date ranges,
+#' automatic request chunking, and multiple output formats.
+#'
+#' @param ticker A character vector of ticker symbols to retrieve.
+#' Special values include:
+#' \itemize{
+#'   \item \code{"ALL"}: retrieve all available instruments
+#'   \item \code{"ALL SHARES"}: retrieve only shares
+#'   \item \code{"ALL INDEXES"}: retrieve only indexes
 #' }
 #'
-#' @param ticker Character vector of stock tickers. Use \code{"ALL"} to retrieve all available tickers.
-#' @param Period Character string defining data frequency (currently not used, default is "daily").
-#' @param from Start date for data extraction (Date or character).
-#' @param to End date for data extraction (Date or character).
-#' @param output_format Output structure: \code{"by_col"} (default) for long format,
-#' or \code{"by_row"} for wide format.
+#' @param Period A character string defining the data frequency.
+#' Currently only \code{"daily"} is supported.
 #'
-#' @return A data frame containing historical stock market data with standardized columns:
-#' Date, Ticker, YearHigh, YearLow, PrevCloseVWAP, OpenPrice, LastPrice,
-#' CloseVWAP, PriceChange, BidClose, AskClose, Volume, ValueTraded.
+#' @param from Start date (character or \code{Date}).
+#' Default is 100 days before today.
 #'
-#' @note
-#' This function relies on a private web endpoint of the GSE portal and may break if
-#' the underlying HTML structure or API changes. It includes retry handling and basic
-#' error messages for unavailable tickers.
+#' @param to End date (character or \code{Date}).
+#' Default is today.
 #'
-#' @importFrom httr POST add_headers status_code content
+#' @param output_format Output structure specification:
+#' \itemize{
+#'   \item \code{"by_col"}: long format with a \code{Ticker} column
+#'   \item \code{"by_row"}: wide format with ticker-prefixed columns
+#'   \item \code{"all"}: returns both formats as a named list
+#' }
+#'
+#' @details
+#' The function performs the following operations:
+#'
+#' \enumerate{
+#'   \item Retrieves available GSE tickers using \code{GET_tickers("GSE")}.
+#'
+#'   \item Retrieves the required \code{wdtNonce} authentication token
+#'   from the GSE trading portal.
+#'
+#'   \item Validates ticker symbols and requested date ranges.
+#'
+#'   \item Splits the requested period into chunks of approximately
+#'   500 days to reduce request size and improve reliability.
+#'
+#'   \item Sends POST requests to the GSE DataTables AJAX endpoint.
+#'
+#'   \item Parses and standardizes the returned JSON data.
+#'
+#'   \item Keeps and formats the following variables:
+#'   \code{Date}, \code{Open}, \code{Low},
+#'   \code{High}, \code{Close}, and \code{Volume}.
+#'
+#'   \item Merges all ticker datasets into the requested output structure.
+#' }
+#'
+#' A small random delay is introduced between requests in order to
+#' reduce server load and limit request throttling.
+#'
+#' @return
+#' Depending on \code{output_format}, returns:
+#'
+#' \itemize{
+#'
+#'   \item A long-format data frame (\code{"by_col"}) containing:
+#'   \code{Date}, \code{Ticker}, \code{Open}, \code{High},
+#'   \code{Low}, \code{Close}, and \code{Volume}.
+#'
+#'   \item A wide-format data frame (\code{"by_row"}) where each
+#'   variable is prefixed by ticker names
+#'   (e.g. \code{ACCESS.Close}).
+#'
+#'   \item A named list containing both formats when
+#'   \code{output_format = "all"}.
+#' }
+#'
+#' @section API Source:
+#' Data are retrieved from the Ghana Stock Exchange web portal:
+#' \url{https://gse.com.gh/}
+#'
+#' @section Limitations:
+#' \itemize{
+#'   \item Only daily frequency is currently supported.
+#'
+#'   \item The function depends on the internal structure of the
+#'   GSE web portal and may stop working if the endpoint changes.
+#'
+#'   \item Historical availability depends on the GSE database.
+#' }
+#'
+#' @section Error Handling:
+#' \itemize{
+#'   \item Invalid tickers are skipped with warning messages.
+#'
+#'   \item Failed HTTP requests are retried automatically.
+#'
+#'   \item The function stops if no valid data can be retrieved.
+#' }
+#'
+#' @section Caching:
+#' The latest successful download is stored inside \code{.pkg_env}
+#' for reuse within the current R session.
+#'
+#' @examples
+#' \dontrun{
+#'
+#' # Retrieve a single ticker
+#' df <- .GET_data_GSE(
+#'   ticker = "ACCESS",
+#'   from = "2024-01-01",
+#'   to = "2024-06-01"
+#' )
+#'
+#' # Retrieve all shares
+#' df_all <- .GET_data_GSE(
+#'   ticker = "ALL SHARES"
+#' )
+#'
+#' # Retrieve both output formats
+#' df_both <- .GET_data_GSE(
+#'   ticker = c("ACCESS", "CAL"),
+#'   output_format = "all"
+#' )
+#' }
+#'
+#' @importFrom httr POST RETRY add_headers status_code content timeout
 #' @importFrom jsonlite fromJSON
-#' @importFrom dplyr mutate across select arrange
-#' @importFrom purrr map
-#' @importFrom readr type_convert
-#' @importFrom stringr str_extract
-#' @importFrom tibble as_tibble
-#' @importFrom readr type_convert
+#' @importFrom dplyr mutate transmute distinct arrange bind_rows
+#' @importFrom purrr pluck
 #' @importFrom stats runif
+#' @importFrom rlang abort
+#'
+#' @seealso
+#' \code{\link{GET_tickers}},
+#' \code{\link{output_data}}
 #'
 #' @keywords internal
-.GET_data_GSE = function(ticker = "ALL",Period = "daily",from = Sys.Date() - 89,to = Sys.Date(),output_format = c("by_col","by_row")) {
+.GET_data_GSE = function(ticker = "ALL",Period = "daily",from = Sys.Date() - 100,to = Sys.Date(),output_format = c("all","by_col","by_row")) {
 
     #ticker = "ACCESS"
     #tick = ticker
-    market_tickers = GET_tickers("GSE")
-    wdtnonce_id = get_gse_wdtnonce_id(url_for_wdtnonce =  "https://gse.com.gh/trading-and-data/",node = "wdtNonceFrontendEdit_39")
 
+    # ====================================================
+    max_retries = 5
+    retry_delay = 3
+
+    # ==================================================== Tickers
+    market_code = "GSE"
+    base_url = "https://gse.com.gh/"
+
+    market_tickers = GET_tickers(toupper(market_code))
+    wdtnonce_id = get_gse_wdtnonce_id(url_for_wdtnonce =  "https://gse.com.gh/trading-and-data/",node = "wdtNonceFrontendEdit_39")
     ticker <- unique(toupper(ticker))
 
     ifelse(ticker[1] =="ALL",ticker <- market_tickers@List,ticker)
     ifelse(ticker[1] =="ALL SHARES",ticker <- market_tickers@ListShares,ticker)
     ifelse(ticker[1] =="ALL INDEXES",ticker <- market_tickers@ListIndexes,ticker)
 
-    first_date <- lubridate::parse_date_time(from, orders = "ymd")
-    end_date   <- lubridate::parse_date_time(to, orders = "ymd")
+    # ==================================================== Date
+    from <- as.Date(from)
+    to <- as.Date(to)
 
-    if (first_date >= end_date){
-        rlang::abort(
-            "The '.from' parameter (start_date) must be less than '.to' (end_date)"
-        )
-    } else if (first_date > Sys.Date()){
-        rlang::abort(
-            "The '.from' parameter (start_date) must be less than today's date"
-        )
+    if (from >= to) {
+        stop("'from' must be less than 'to'")
     }
 
-    t_range = as.character(as.Date(to) - as.Date(from) + 1)
+    if(from > Sys.Date()) {
+        stop("'from' must be less than 'today'")
+    }
+
+    periods = seq(from = from, to = to, by = "500 day")
+    if(!(to %in% periods)){
+        periods <- c(periods,to)
+    }
+
+    t_range = as.character(to - from + 1)
+
+    # ==================================================== DATA BETWEEN PERIODS
 
     headers <- c(
         "Upgrade-Insecure-Requests" = "1",
@@ -404,7 +515,9 @@ get_gse_index_share = function(){
         table_id = "39"
     )
 
-    df = NULL
+
+    df_tick = list()
+    df_tickers = list()
 
     for (tick in ticker) {
 
@@ -413,19 +526,15 @@ get_gse_index_share = function(){
             next
         }
 
-        range_period = seq(from = first_date, to = end_date, by = "500 day")
-        ifelse(!(end_date %in% range_period),
-               range_period <- c(range_period,end_date),range_period)
+        df_period = list()
+        df_test = NULL
 
-        range_period_length = length(range_period)
-        range_period_length_adjusted = range_period_length - 1 # parcourir jusqu'a l'avant derniere date
-        pre_df_tick = NULL
-        nb_merging = 1
+        for(i in 1:(length(periods) - 1)) {  # parcourir les intervalles de periode
 
-        for(i in 1:range_period_length_adjusted) {  # parcourir les intervalles de periode
+            session = active_client_session(url = base_url)
 
-            from_date <- as.Date.POSIXct(range_period[i])
-            to_date <- as.Date.POSIXct(range_period[i+1])
+            from_date <- format(as.Date(periods[i]),"%d/%m/%Y")
+            to_date <- format(as.Date(periods[i+1]),"%d/%m/%Y")
 
             data = list(
                 draw = "4",
@@ -439,7 +548,7 @@ get_gse_index_share = function(){
                 `columns[1][name]` = "dailydate",
                 `columns[1][searchable]` = "true",
                 `columns[1][orderable]` = "true",
-                `columns[1][search][value]` = paste(format(as.Date(from),"%d/%m/%Y"),format(as.Date(to),"%d/%m/%Y"),sep = "|"),
+                `columns[1][search][value]` = paste(from_date,to_date,sep = "|"),
                 `columns[1][search][regex]` = "false",
                 `columns[2][data]` = "2",
                 `columns[2][name]` = "sharecode",
@@ -523,104 +632,85 @@ get_gse_index_share = function(){
                 sRangeSeparator = "|"
             )
 
-            res <- POST(url =  "https://gse.com.gh/wp-admin/admin-ajax.php",
-                        add_headers(.headers=headers),
-                        query = params,
-                        body = data, encode = "form")
+            req <- tryCatch({
+                httr::RETRY(
+                    "POST",
+                    url = "https://gse.com.gh/wp-admin/admin-ajax.php",
+                    httr::add_headers(.headers = headers),
+                    handle = session$handle,
+                    query = params,
+                    body = data,
+                    encode = "form",
+                    httr::timeout(retry_delay),
+                    times = max_retries,
+                    quiet = TRUE
+                )
 
-            Sys.sleep(runif(1,0.1,0.5))
+            }, error = function(e) NULL)
 
-            if (inherits(res, "try-error") || status_code(res) != 200) {
+
+            Sys.sleep(runif(1,0.1,0.7))
+
+            if (inherits(req, "try-error") || status_code(req) != 200) {
                 message(paste("Can't extract data for",tick))
                 next
             }
 
-            pre_df_tick_period <- tryCatch({
-                res %>%
+
+            df_test <- tryCatch(
+
+                req %>%
                     content("text", encoding = "UTF-8") %>%
                     fromJSON() %>%
-                    .$data %>%
-                    as.data.frame()
-            }, error = function(e) {
-                return(NULL)
-            })
+                    purrr::pluck("data") %>%
+                    as.data.frame() %>%
+                    setNames(c(
+                        "Code","Date","Ticker","High","Low","PrevCloseVWAP",
+                        "Open","LastPrice","Close","PriceChange",
+                        "BidClose","AskClose","Volume","ValueTraded"
+                    )) %>%
 
-            if(nrow(pre_df_tick_period) > 0){
-                pre_df_tick  = rbind(pre_df_tick,pre_df_tick_period)
+                    dplyr::transmute(
+                        Date = as.Date(Date, format = "%d/%m/%Y"),
+                        across(c(Open, Low, High, Close, Volume), ~ as.numeric(.x))
+                    ),
+                error = function(e) NULL
+            )
+
+
+            if(!is.null(df_test)) {
+                df_period[[i]] = df_test
+            } else {
                 next
             }
-
-            nb_merging = nb_merging + 1
         }
 
 
-        if(is.data.frame(pre_df_tick)){
-
-            if(nrow(pre_df_tick) > 0){
-                pre_df_tick = pre_df_tick %>%
-                    distinct()
-                message(paste("[100%] - Data extraction for ticker",tick, "between :",min(pre_df_tick$Date,na.rm = TRUE),"-",max(pre_df_tick$Date,na.rm = TRUE)))
-            }
-        } else {
-            message(paste("[e] - Data not available for ticker",tick, "between :",from,"-",to))
+        if (length(df_period) == 0) {
+            message(paste("[e]\u274C - Data not available for ticker",tick, "between :",from,"-",to))
             next
+        } else {
+            df_tick <- dplyr::bind_rows(df_period) %>%
+                dplyr::distinct() %>%
+                dplyr::arrange(Date)
+            message("[100%]\u2705 - Data downloaded for ", tick," between ",min(df_tick$Date)," - ",max(df_tick$Date))
+
+            df_tickers[[tick]] = df_tick
         }
-
-        colnames(pre_df_tick) <- c(
-            "Code",
-            "Date",
-            "Ticker",
-            "YearHigh",
-            "YearLow",
-            "PrevCloseVWAP",
-            "OpenPrice",
-            "LastPrice",
-            "CloseVWAP",
-            "PriceChange",
-            "BidClose",
-            "AskClose",
-            "Volume",
-            "ValueTraded"
-        )
-
-        if(output_format[1] == "by_col") {
-            df_tick = pre_df_tick %>%
-                mutate(Ticker = tick) %>%
-                select(Date, Ticker, everything()) %>%
-                arrange(Date)
-
-            if(is.null(df)){
-                df = df_tick
-            } else {
-                df = rbind(df,df_tick)
-                rm(pre_df_tick) ; rm(df_tick)
-            }
-
-        } else if(output_format[1] == "by_row") {
-
-            df_tick = pre_df_tick %>%
-                arrange(Date) %>%
-                select(Date, everything())
-
-            colnames(df_tick) = c(colnames(df_tick)[1],paste(tick,colnames(df_tick)[-1],sep = "."))
-
-            if(is.null(df)){
-                df = df_tick
-            } else {
-                df = merge(x= df,y= df_tick,by = colnames(df_tick)[1],all = TRUE)
-                rm(pre_df_tick) ; rm(df_tick)
-            }
-        }
-
     }
 
-    df = df %>%
-        mutate(across(where(is.character), ~ na_if(.x, ""))) %>%
-        mutate(Date = as.Date(Date, format = "%d/%m/%Y")) %>%
-        type_convert()
+    if(length(df_tickers) == 0) {
+        rlang::abort("No data available !")
+    }
+
+    df = output_data(data = df_tickers,output_format = output_format)
+
+    if(.pkg_env$last_cache_operation_is_available == FALSE) {
+        .pkg_env$last_data_downloaded = df
+        .pkg_env$last_cache_operation_is_available = TRUE
+    }
 
     return(df)
-
 }
 
 

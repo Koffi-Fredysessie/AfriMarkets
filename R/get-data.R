@@ -1,83 +1,99 @@
-#' Retrieve Historical Market Data for African Stock Exchanges
+#' @title Retrieve Historical Market Data for African Stock Exchanges
 #'
 #' @description
-#' This generic S4 method retrieves historical price and volume data for one or more
-#' securities listed on supported African stock exchanges (e.g., BRVM, BVC, GSE).
-#' It provides a unified interface for accessing heterogeneous market data sources
-#' through a consistent output structure.
+#' Retrieves historical OHLCV (Open, High, Low, Close, Volume) data for one or more
+#' financial instruments listed on supported African stock exchanges.
+#'
+#' This S4 generic provides a unified interface to access heterogeneous data sources
+#' (e.g., BRVM scrapers, Investing.com API) while returning a standardized output format.
 #'
 #' @param market_code A character string specifying the target stock exchange.
-#' Supported values include: \code{"BRVM"}, \code{"BVC"}, and \code{"GSE"}.
+#' Supported values include: \code{"BRVM"}, \code{"GSE"}, \code{"NGX"},
+#' \code{"JSE"}, \code{"MSE"}, \code{"EGX"}, and \code{"TSE"}.
 #'
-#' @param ticker A character vector of security tickers. Tick symbols are case-insensitive.
-#' Special keywords include:
+#' @param ticker A character vector of tickers (case-insensitive).
+#' Special values include:
 #' \itemize{
-#'   \item \code{"ALL"}: retrieves all available securities (shares and indices)
-#'   \item \code{"ALL SHARES"}: retrieves only listed equities
-#'   \item \code{"ALL INDEXES"}: retrieves only market indices
-#'   \item a custom vector such as \code{c("ACCESS", "SGBCI")}
+#'   \item \code{"ALL"}: all instruments (shares + indices)
+#'   \item \code{"ALL SHARES"}: only equities
+#'   \item \code{"ALL INDEXES"}: only indices
 #' }
 #'
-#' @param Period A character string or numeric value defining data frequency:
+#' @param Period A character string indicating frequency.
+#' Currently only \code{"daily"} is supported for most markets.
+#'
+#' @param from Start date (\code{Date} or \code{"YYYY-MM-DD"}).
+#' Default is 89 days before today.
+#'
+#' @param to End date (\code{Date} or \code{"YYYY-MM-DD"}).
+#' Default is today.
+#'
+#' @param output_format Output format:
 #' \itemize{
-#'   \item \code{"daily"} or \code{0} (default)
-#'   \item \code{"weekly"} or \code{7}
-#'   \item \code{"monthly"} or \code{30}
-#'   \item \code{"quarterly"} or \code{91}
-#'   \item \code{"yearly"} or \code{365}
+#'   \item \code{"by_col"}: long format (default)
+#'   \item \code{"by_row"}: wide format
+#'   \item \code{"all"}: returns both formats as a list
 #' }
 #'
-#' @param from Start date of the time window (\code{Date} or \code{"YYYY-MM-DD"}).
-#' Default is 89 days before \code{Sys.Date()}.
-#'
-#' @param to End date of the time window (\code{Date} or \code{"YYYY-MM-DD"}).
-#' Default is the current date.
-#'
-#' @param output_format Output format specification:
+#' @return
 #' \itemize{
-#'   \item \code{"by_col"} (default): long format with a \code{Ticker} column, suitable for analysis and visualization
-#'   \item \code{"by_row"}: wide format where each ticker is expanded into separate columns
+#'   \item A data frame in long format (\code{by_col})
+#'   \item A data frame in wide format (\code{by_row})
+#'   \item A list containing both formats (\code{all})
+#' }
+#'
+#' Long format contains:
+#' \itemize{
+#'   \item \code{Date}, \code{Ticker}, \code{Open}, \code{High},
+#'   \item \code{Low}, \code{Close}, \code{Volume}
 #' }
 #'
 #' @details
-#' The function acts as a dispatcher that routes requests to the appropriate
-#' market-specific data retrieval function based on \code{market_code}.
-#' It ensures consistent preprocessing, ticker normalization, and output formatting
-#' across all supported exchanges.
-#'
-#' Internally, the function handles:
-#' \itemize{
-#'   \item Market validation using available registered markets
-#'   \item Ticker normalization (uppercase conversion)
-#'   \item Error handling for unsupported markets or failed requests
-#'   \item Delegation to market-specific implementations
+#' The function acts as a dispatcher:
+#' \enumerate{
+#'   \item Validates the market code
+#'   \item Normalizes tickers
+#'   \item Routes the request to a market-specific backend
+#'   \item Standardizes output format
 #' }
 #'
-#' @return A data frame containing standardized market data including:
-#' Date, Open, High, Low, Close, Volume, and additional market-specific fields.
+#' Backends:
+#' \itemize{
+#'   \item BRVM: custom scraping engine
+#'   \item Others: Investing.com API via \code{.GET_DATA_FROM_INVESTING()}
+#' }
+#'
+#' @section Limitations:
+#' \itemize{
+#'   \item Only daily frequency is guaranteed
+#'   \item API rate limits may apply
+#'   \item Data availability depends on external providers
+#' }
 #'
 #' @family Market Data Functions
-#' @author Koffi Frederic SESSIE
-#' @author Olabiyi Aurel Geoffroy ODJO
 #'
-#' @importFrom methods setGeneric setMethod
-#'
-#' @export
+#' @author
+#' Koffi Frederic SESSIE \cr
+#' Olabiyi Aurel Geoffroy ODJO
 #'
 #' @examples
 #' \dontrun{
-#' # Retrieve BRVM daily stock data
-#' df <- GET_data("BRVM", ticker = "SNTS", from = "2023-01-01")
+#' # Single ticker
+#' df <- GET_data("NGX", ticker = "ZENITHBANK")
 #'
-#' # Retrieve all GSE shares in long format
-#' df <- GET_data("GSE", ticker = "ALL SHARES", Period = "daily")
+#' # All shares
+#' df <- GET_data("GSE", ticker = "ALL SHARES")
 #'
-#' # Retrieve BVC data in wide format
-#' df <- GET_data("BVC", ticker = c("ACCESS", "CAL"), output_format = "by_row")
+#' # Multiple tickers
+#' df <- GET_data("BRVM", ticker = c("SNTS", "SGBCI"))
+#'
+#' # Wide format
+#' df <- GET_data("NGX", ticker = "ALL", output_format = "by_row")
 #' }
 #'
 #' @name GET_data
-setGeneric("GET_data", function(market_code,ticker = "ALL",Period = "daily",from = Sys.Date() - 89,to = Sys.Date(),output_format = c("by_col","by_row")) standardGeneric("GET_data"))
+#' @export
+setGeneric("GET_data", function(market_code,ticker = "ALL",Period = "daily",from = Sys.Date() - 89,to = Sys.Date(),output_format = c("by_col","by_row","all")) standardGeneric("GET_data"))
 
 
 #' @rdname GET_data
@@ -106,8 +122,12 @@ setMethod(
             return(switch(market_code,
 
                    "BRVM" = .GET_data_BRVM(ticker = ticker,Period = Period,from = from,to = to,output_format = output_format),
-                   "BVC"  = .GET_data_BVC(ticker = ticker,Period = Period,from = from,to = to,output_format = output_format),
                    "GSE"  = .GET_data_GSE(ticker = ticker,Period = Period,from = from,to = to,output_format = output_format),
+                   "NGX"  = .GET_DATA_FROM_INVESTING(market_code = "NGX",market_id = "20",ticker = ticker,Period = Period,from = from,to = to,output_format = output_format,base_url = "https://ng.investing.com"),
+                   "JSE"  = .GET_DATA_FROM_INVESTING(market_code = "JSE",market_id = "110",ticker = ticker,Period = Period,from = from,to = to,output_format = output_format,base_url = "https://ng.investing.com"),
+                   "MSE"  = .GET_DATA_FROM_INVESTING(market_code = "MSE",market_id = "105",ticker = ticker,Period = Period,from = from,to = to,output_format = output_format,base_url = "https://ng.investing.com"),
+                   "EGX"  = .GET_DATA_FROM_INVESTING(market_code = "EGX",market_id = "59",ticker = ticker,Period = Period,from = from,to = to,output_format = output_format,base_url = "https://ng.investing.com"),
+                   "TSE"  = .GET_DATA_FROM_INVESTING(market_code = "TSE",market_id = "202",ticker = ticker,Period = Period,from = from,to = to,output_format = output_format,base_url = "https://ng.investing.com"),
 
                    rlang::inform(
                        paste("No GET_data() method defined for", market_code)
@@ -116,6 +136,7 @@ setMethod(
 
                 },
                 error = function(e) {
+                    print(e)
                     message("Make sure you have an active internet connection")
                 }
             )

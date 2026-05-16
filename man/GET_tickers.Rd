@@ -10,63 +10,87 @@ GET_tickers(market_code)
 \S4method{GET_tickers}{character}(market_code)
 }
 \arguments{
-\item{market_code}{A character string indicating the African market code for which
-ticker data should be retrieved (e.g. \code{"BRVM"}, \code{"BVC"}).}
+\item{market_code}{A character string indicating the African market code
+(e.g. \code{"BRVM"}, \code{"NGX"}, \code{"JSE"}). Use \code{"ALL"} to
+retrieve all supported markets at once.}
 }
 \value{
-An S4 object of class \code{"african_market"} populated with ticker data, including:
 \itemize{
-\item market metadata (name, URLs),
-\item lists of index and share tickers,
-\item detailed data frames for indexes and shares.
+\item If a single market is requested: an S4 object of class \code{"african_market"}.
+\item If \code{"ALL"} is used: a named list of S4 market objects.
+}
+
+Each market object contains:
+\itemize{
+\item \code{Indexes}: Data frame of index tickers
+\item \code{Shares}: Data frame of share tickers
+\item \code{ListIndexes}: Character vector of index tickers
+\item \code{ListShares}: Character vector of share tickers
+\item \code{List}: Combined vector of all tickers
+\item \code{Ticker_full_name}: Alias of \code{List}
 }
 }
 \description{
-Retrieves and processes ticker data (indexes and shares) for supported African financial markets.
-The function automatically dispatches the appropriate data extraction logic based on the
-provided market code (e.g. \code{"BRVM"}, \code{"BVC"}).
+Retrieves and processes ticker data (indexes and shares) for supported African
+financial markets. This function acts as a dispatcher, automatically selecting
+the appropriate data extraction method based on the provided market code.
 
-For each supported market, the function returns a standardized S4 object containing
-market metadata, lists of tickers, detailed index and share information, and related
-descriptive fields.
+For each supported market, the function returns a standardized S4 object
+of class \code{"african_market"} containing market metadata, ticker lists,
+and detailed information on indexes and shares.
 }
 \details{
-This function provides a unified interface for accessing ticker information across
-multiple African stock exchanges. Each market is processed using its own dedicated
-data extraction logic while preserving a common output structure.
+The function supports multiple African stock exchanges using a unified interface.
+Internally, it dispatches calls to market-specific implementations:
 
-Supported markets may include, but are not limited to:
 \itemize{
-\item BRVM – Bourse Régionale des Valeurs Mobilières (WAEMU / UEMOA),
-\item BVC – Bourse des Valeurs du Cameroun.
-\item GSE – Ghana Stock Exchange.
+\item \code{BRVM}: Custom scraper
+\item Other markets (NGX, JSE, EGX, etc.): Investing.com API
 }
 
-Additional markets can be integrated seamlessly in future releases without changing
-the user-facing API.
+Supported markets include:
+\itemize{
+\item BRVM – Bourse Régionale des Valeurs Mobilières (UEMOA)
+\item GSE – Ghana Stock Exchange
+\item NGX – Nigerian Exchange
+\item JSE – Johannesburg Stock Exchange
+\item MSE – Casablanca Stock Exchange
+\item EGX – Egyptian Exchange
+\item TSE – Tunis Stock Exchange
 }
+
+Additional markets can be added without modifying the user-facing API.
+
+If an unsupported market is requested, an informative message is returned.
+}
+\section{Performance}{
+
+Data retrieval depends on external APIs and may vary in speed depending on
+network conditions and server response times.
+}
+
 \examples{
 \dontrun{
 # Retrieve BRVM tickers
-brvm_ticks <- GET_tickers("BRVM")
+brvm <- GET_tickers("BRVM")
 
-# Retrieve BVC tickers
-bvc_ticks <- GET_tickers("BVC")
+# Retrieve NGX tickers
+ngx <- GET_tickers("NGX")
 
-# Display shares
-brvm_ticks@Shares
+# Retrieve all markets
+markets <- GET_tickers("ALL")
 
-# List of all tickers
-brvm_ticks@List
+# Access shares
+ngx@Shares
 
-# Print market object
-brvm_ticks
+# List all tickers
+ngx@List
 }
 
 }
 \author{
-Koffi Frederic SESSIE \cr
 Olabiyi Aurel Geoffroy ODJO \cr
+Koffi Frederic SESSIE \cr
 Oudouss Diakite Abdoul \cr
 Steven P. Sanderson II, MPH
 }

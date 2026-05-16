@@ -1,42 +1,65 @@
 Package: AfriMarkets
 Type: Package
-Title: Retrieve Historical Data of Companies Listed on Africans Stock Exchange
-Version: 1.0.3
+Title: Retrieve and Analyze Historical Data from African Stock Exchanges
+Version: 1.0.5
 Authors@R: c(
-    person("Sessie","Koffi Frederic", email = "koffisessie@gmail.com",
-            role = c("aut","cre","cph")),
-    person("Odjo", "Olabiyi Aurel Géoffroy | xgeosoft", role = "aut",
-            email = "odjoaurel@gmail.com"),
-    person("Diakité", "Abdoul Oudouss", role = "aut",
-            email = "abdouloudoussdiakite@gmail.com"),
-    person("Steven","Sanderson", role = "aut",
-            email = "spsanderson@gmail.com")
-            )
-Description: Provide real-time access to data from Africans stock exchange. The goal is to facilitate data access for users of the R programming language. The package includes a variety of data that can be accessed by calling functions.
+    person("Odjo", "Olabiyi Aurel Géoffroy",
+            email  = "odjoaurel@gmail.com",
+            role   = c("aut", "cre", "cph"),
+            comment = c(ORCID = "")),
+    person("Sessie", "Koffi Frederic",
+            email  = "koffisessie@gmail.com",
+            role   = c("aut")),
+    person("Diakité", "Abdoul Oudouss",
+            email  = "abdouloudoussdiakite@gmail.com",
+            role   = "aut"),
+    person("Sanderson", "Steven",
+            email  = "spsanderson@gmail.com",
+            role   = "aut")
+    )
+Description: Provides real-time and historical access to financial data from
+    African stock exchanges, including the Bourse Régionale des Valeurs
+    Mobilières (BRVM) and other African markets. The package is designed to
+    facilitate data retrieval, processing, and analysis for R users interested
+    in African capital markets. It offers functions to query stock prices,
+    trading volumes, market indices, and company-level information. Statistical
+    tools for time-series analysis, normality testing, and exploratory data
+    analysis are also included, making it suitable for both practitioners and
+    researchers in African financial markets.
 License: MIT + file LICENSE
+URL: https://github.com/Fredysessie/AfriMarkets
+BugReports: https://github.com/Fredysessie/AfriMarkets/issues
 Encoding: UTF-8
+Language: en-US
 Roxygen: list(markdown = TRUE)
-Imports: 
+RoxygenNote: 7.3.3
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+Depends:
+    R (>= 4.1.0)
+Imports:
     methods,
     magrittr,
-    rlang (>= 0.4.11),
-    tidyr,
+    rlang     (>= 0.4.11),
     dplyr,
-    httr,
-    httr2,
-    stringr,
+    tidyr,
     tibble,
     purrr,
-    readr,
+    stringr,
+    lubridate,
+    httr,
+    httr2,
     jsonlite,
     rvest,
-    lubridate,
-    nortest, fBasics, tseries, stats, goftest,tseries
+    xts,
+    highcharter,
+    nortest,
+    fBasics,
+    goftest,
+    tseries,
+    stats
 Suggests:
     rmarkdown,
     knitr,
     roxygen2,
-    testthat (>= 3.0.0)
-VignetteBuilder: knitr
-RoxygenNote: 7.3.3
-Config/testthat/edition: 3
+    testthat  (>= 3.0.0)

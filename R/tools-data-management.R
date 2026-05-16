@@ -161,4 +161,161 @@ setMethod("impute.data", signature(data = "ts"),
 
 
 
+#' Clean and Convert Values to Numeric
+#'
+#' Convert a vector to numeric by removing common thousands separators
+#' (commas) and coercing the result into numeric format.
+#' Warnings generated during coercion are suppressed.
+#'
+#' @param x A vector (character, factor, or numeric) containing values to convert.
+#'
+#' @return A numeric vector of the same length as \code{x}. Values that cannot be
+#'   converted are returned as \code{NA}.
+#'
+#' @details
+#' The function performs the following steps:
+#' \enumerate{
+#'   \item Coerces input values to character.
+#'   \item Removes commas used as thousands separators.
+#'   \item Converts the cleaned values to numeric using \code{as.numeric()}.
+#'   \item Suppresses warnings generated during coercion.
+#' }
+#'
+#' This function is particularly useful for financial datasets where numeric
+#' values are often stored as formatted strings (e.g., "1,234.56").
+#'
+#' Note that non-standard formats (e.g., currency symbols, spaces, or European
+#' decimal formats using commas) are not handled and will result in \code{NA}.
+#'
+#' @examples
+#' clean_numeric("1,234.56")
+#' # 1234.56
+#'
+#' clean_numeric(c("10,000", "5,500.25", "NA", "-", "abc"))
+#' # 10000 5500.25 NA NA NA
+#'
+#' clean_numeric(factor(c("1,000", "2,500")))
+#' # 1000 2500
+#'
+#' @seealso \code{\link{as.numeric}}
+#'
+#' @export
+clean_numeric <- function(x) {
+    suppressWarnings(
+        as.numeric(gsub(",", "", as.character(x)))
+    )
+}
+
+
+
+
+#' Format Historical Market Data Outputs
+#'
+#' @description
+#' Internal helper function used to standardize and transform historical
+#' market data stored as a named list of ticker-specific data frames into
+#' multiple output structures suitable for analysis and modeling.
+#'
+#' It supports conversion into long format, wide format, or both formats
+#' simultaneously.
+#'
+#' @param data A named list of data frames containing historical market data.
+#' Each element name must correspond to a ticker symbol.
+#'
+#' Each data frame must contain at least a \code{Date} column and may include
+#' typical OHLCV variables such as \code{Open}, \code{High}, \code{Low},
+#' \code{Close}, and \code{Volume}.
+#'
+#' @param output_format A character string specifying the desired output format:
+#' \itemize{
+#'   \item \code{"by_col"}: long (tidy) format with an added \code{Ticker} column.
+#'   \item \code{"by_row"}: wide format with ticker-prefixed column names.
+#'   \item \code{"all"}: returns both formats as a named list.
+#' }
+#'
+#' @details
+#' The function performs the following steps:
+#' \enumerate{
+#'   \item Iterates over each ticker dataset in the input list.
+#'   \item Constructs a long-format dataset by appending a \code{Ticker} column.
+#'   \item Builds a wide-format dataset by prefixing variable names with ticker symbols.
+#'   \item Merges all ticker datasets by the \code{Date} column.
+#'   \item Orders the final outputs chronologically.
+#' }
+#'
+#' The implementation relies on \pkg{purrr} for iteration and reduction
+#' and \pkg{dplyr} for data manipulation and sorting.
+#'
+#' @return
+#' Depending on \code{output_format}, returns:
+#' \itemize{
+#'   \item A data frame in long format (\code{"by_col"}) containing:
+#'   \code{Date}, \code{Ticker}, and market variables.
+#'
+#'   \item A data frame in wide format (\code{"by_row"}) where each
+#'   ticker-variable combination becomes a separate column.
+#'
+#'   \item A named list containing both formats when
+#'   \code{output_format = "all"}.
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' sample_data <- list(
+#'   BOAB = data.frame(
+#'     Date = as.Date("2025-01-01") + 0:2,
+#'     Close = c(5000, 5100, 5200)
+#'   ),
+#'   SGBCI = data.frame(
+#'     Date = as.Date("2025-01-01") + 0:2,
+#'     Close = c(12000, 12100, 12200)
+#'   )
+#' )
+#'
+#' output_data(sample_data, "by_col")
+#' output_data(sample_data, "by_row")
+#' output_data(sample_data, "all")
+#' }
+#'
+#' @importFrom purrr imap imap_dfr reduce
+#' @importFrom dplyr arrange full_join
+#'
+#' @keywords internal
+output_data = function(data, output_format = c("by_col","by_row","all")){
+
+    output_format = output_format[1]
+
+    by_col <- purrr::imap_dfr(
+        data,
+        function(x, ticker){
+            x$Ticker <- ticker
+            x
+        }
+    ) %>%
+        dplyr::arrange(Date, Ticker)
+
+
+    by_row <- purrr::imap(
+        data,
+        function(x, ticker){
+            names(x) <- ifelse(names(x) == "Date","Date",paste0(ticker, ".", names(x)))
+            x
+        }
+    ) %>% purrr::reduce(full_join,by = "Date")
+
+    df <- switch(
+        output_format,
+        by_col = by_col,
+        by_row = by_row,
+
+        all = list(
+            by_col = by_col,
+            by_row = by_row
+        )
+    )
+
+    return(df)
+
+}
+
 

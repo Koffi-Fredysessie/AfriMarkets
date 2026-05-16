@@ -11,7 +11,7 @@ GET_data(
   Period = "daily",
   from = Sys.Date() - 89,
   to = Sys.Date(),
-  output_format = c("by_col", "by_row")
+  output_format = c("by_col", "by_row", "all")
 )
 
 \S4method{GET_data}{character,character}(
@@ -25,78 +25,95 @@ GET_data(
 }
 \arguments{
 \item{market_code}{A character string specifying the target stock exchange.
-Supported values include: \code{"BRVM"}, \code{"BVC"}, and \code{"GSE"}.}
+Supported values include: \code{"BRVM"}, \code{"GSE"}, \code{"NGX"},
+\code{"JSE"}, \code{"MSE"}, \code{"EGX"}, and \code{"TSE"}.}
 
-\item{ticker}{A character vector of security tickers. Tick symbols are case-insensitive.
-Special keywords include:
+\item{ticker}{A character vector of tickers (case-insensitive).
+Special values include:
 \itemize{
-\item \code{"ALL"}: retrieves all available securities (shares and indices)
-\item \code{"ALL SHARES"}: retrieves only listed equities
-\item \code{"ALL INDEXES"}: retrieves only market indices
-\item a custom vector such as \code{c("ACCESS", "SGBCI")}
+\item \code{"ALL"}: all instruments (shares + indices)
+\item \code{"ALL SHARES"}: only equities
+\item \code{"ALL INDEXES"}: only indices
 }}
 
-\item{Period}{A character string or numeric value defining data frequency:
+\item{Period}{A character string indicating frequency.
+Currently only \code{"daily"} is supported for most markets.}
+
+\item{from}{Start date (\code{Date} or \code{"YYYY-MM-DD"}).
+Default is 89 days before today.}
+
+\item{to}{End date (\code{Date} or \code{"YYYY-MM-DD"}).
+Default is today.}
+
+\item{output_format}{Output format:
 \itemize{
-\item \code{"daily"} or \code{0} (default)
-\item \code{"weekly"} or \code{7}
-\item \code{"monthly"} or \code{30}
-\item \code{"quarterly"} or \code{91}
-\item \code{"yearly"} or \code{365}
-}}
-
-\item{from}{Start date of the time window (\code{Date} or \code{"YYYY-MM-DD"}).
-Default is 89 days before \code{Sys.Date()}.}
-
-\item{to}{End date of the time window (\code{Date} or \code{"YYYY-MM-DD"}).
-Default is the current date.}
-
-\item{output_format}{Output format specification:
-\itemize{
-\item \code{"by_col"} (default): long format with a \code{Ticker} column, suitable for analysis and visualization
-\item \code{"by_row"}: wide format where each ticker is expanded into separate columns
+\item \code{"by_col"}: long format (default)
+\item \code{"by_row"}: wide format
+\item \code{"all"}: returns both formats as a list
 }}
 }
 \value{
-A data frame containing standardized market data including:
-Date, Open, High, Low, Close, Volume, and additional market-specific fields.
+\itemize{
+\item A data frame in long format (\code{by_col})
+\item A data frame in wide format (\code{by_row})
+\item A list containing both formats (\code{all})
+}
+
+Long format contains:
+\itemize{
+\item \code{Date}, \code{Ticker}, \code{Open}, \code{High},
+\item \code{Low}, \code{Close}, \code{Volume}
+}
 }
 \description{
-This generic S4 method retrieves historical price and volume data for one or more
-securities listed on supported African stock exchanges (e.g., BRVM, BVC, GSE).
-It provides a unified interface for accessing heterogeneous market data sources
-through a consistent output structure.
+Retrieves historical OHLCV (Open, High, Low, Close, Volume) data for one or more
+financial instruments listed on supported African stock exchanges.
+
+This S4 generic provides a unified interface to access heterogeneous data sources
+(e.g., BRVM scrapers, Investing.com API) while returning a standardized output format.
 }
 \details{
-The function acts as a dispatcher that routes requests to the appropriate
-market-specific data retrieval function based on \code{market_code}.
-It ensures consistent preprocessing, ticker normalization, and output formatting
-across all supported exchanges.
+The function acts as a dispatcher:
+\enumerate{
+\item Validates the market code
+\item Normalizes tickers
+\item Routes the request to a market-specific backend
+\item Standardizes output format
+}
 
-Internally, the function handles:
+Backends:
 \itemize{
-\item Market validation using available registered markets
-\item Ticker normalization (uppercase conversion)
-\item Error handling for unsupported markets or failed requests
-\item Delegation to market-specific implementations
+\item BRVM: custom scraping engine
+\item Others: Investing.com API via \code{.GET_DATA_FROM_INVESTING()}
 }
 }
+\section{Limitations}{
+
+\itemize{
+\item Only daily frequency is guaranteed
+\item API rate limits may apply
+\item Data availability depends on external providers
+}
+}
+
 \examples{
 \dontrun{
-# Retrieve BRVM daily stock data
-df <- GET_data("BRVM", ticker = "SNTS", from = "2023-01-01")
+# Single ticker
+df <- GET_data("NGX", ticker = "ZENITHBANK")
 
-# Retrieve all GSE shares in long format
-df <- GET_data("GSE", ticker = "ALL SHARES", Period = "daily")
+# All shares
+df <- GET_data("GSE", ticker = "ALL SHARES")
 
-# Retrieve BVC data in wide format
-df <- GET_data("BVC", ticker = c("ACCESS", "CAL"), output_format = "by_row")
+# Multiple tickers
+df <- GET_data("BRVM", ticker = c("SNTS", "SGBCI"))
+
+# Wide format
+df <- GET_data("NGX", ticker = "ALL", output_format = "by_row")
 }
 
 }
 \author{
-Koffi Frederic SESSIE
-
+Koffi Frederic SESSIE \cr
 Olabiyi Aurel Geoffroy ODJO
 }
 \concept{Market Data Functions}

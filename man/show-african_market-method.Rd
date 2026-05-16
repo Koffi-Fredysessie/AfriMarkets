@@ -7,8 +7,43 @@
 \S4method{show}{african_market}(object)
 }
 \arguments{
-\item{object}{An object of class african_market.}
+\item{object}{An object of class \code{\link{african_market}}.}
+}
+\value{
+Invisibly returns \code{NULL}. Called for its side effect of printing
+to the console via \code{\link[base]{message}}.
 }
 \description{
-Show method for african_market
+Displays a formatted, human-readable summary of an \code{african_market} object
+in the R console. The output includes a market profile header, a component
+summary (indexes, shares, bonds), and a preview of each data table.
+ANSI escape codes are used for styled terminal output (bold, colors).
+}
+\details{
+The display is structured into four sections:
+\enumerate{
+\item \strong{Header} — Market full name, short name (ticker), and official URL.
+\item \strong{Summary} — Count of available index and share tickers.
+\item \strong{Data tables} — A compact preview (up to 200 rows) of the
+\code{Indexes}, \code{Shares}, and \code{Bonds} slots.
+\item \strong{Footer} — A closing line with the market short name.
+}
+
+Styling relies on ANSI escape sequences (\code{\\x1b[...m}), which render
+correctly in most modern terminals and RStudio. On plain text outputs
+(e.g., \code{Rterm} on Windows without ANSI support), the codes appear as
+raw characters but do not affect functionality.
+}
+\examples{
+\dontrun{
+  # Assuming `brvm` is an african_market object returned by a package function:
+  brvm <- get_african_market("BRVM")
+  show(brvm)
+  # Or simply:
+  brvm
+}
+
+}
+\seealso{
+\code{\link{african_market-class}} for the class definition and slot descriptions.
 }

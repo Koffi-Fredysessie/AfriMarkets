@@ -199,30 +199,61 @@ setMethod("$", "african_market", function(x, name) {
 
 
 
-
 #' Show method for african_market
 #'
-#' @param object An object of class african_market.
+#' @description
+#' Displays a formatted, human-readable summary of an `african_market` object
+#' in the R console. The output includes a market profile header, a component
+#' summary (indexes, shares, bonds), and a preview of each data table.
+#' ANSI escape codes are used for styled terminal output (bold, colors).
+#'
+#' @param object An object of class \code{\link{african_market}}.
+#'
+#' @details
+#' The display is structured into four sections:
+#' \enumerate{
+#'   \item \strong{Header} — Market full name, short name (ticker), and official URL.
+#'   \item \strong{Summary} — Count of available index and share tickers.
+#'   \item \strong{Data tables} — A compact preview (up to 200 rows) of the
+#'     \code{Indexes}, \code{Shares}, and \code{Bonds} slots.
+#'   \item \strong{Footer} — A closing line with the market short name.
+#' }
+#'
+#' Styling relies on ANSI escape sequences (\code{\\x1b[...m}), which render
+#' correctly in most modern terminals and RStudio. On plain text outputs
+#' (e.g., \code{Rterm} on Windows without ANSI support), the codes appear as
+#' raw characters but do not affect functionality.
+#'
+#' @return Invisibly returns \code{NULL}. Called for its side effect of printing
+#'   to the console via \code{\link[base]{message}}.
+#'
+#' @seealso
+#' \code{\link{african_market-class}} for the class definition and slot descriptions.
+#'
+#' @examples
+#' \dontrun{
+#'   # Assuming `brvm` is an african_market object returned by a package function:
+#'   brvm <- get_african_market("BRVM")
+#'   show(brvm)
+#'   # Or simply:
+#'   brvm
+#' }
 #'
 #' @importFrom methods new slot slotNames
 #' @importFrom utils capture.output head tail
 #'
 setMethod("show", "african_market", function(object) {
-
     # --- Fonctions utilitaires locales pour le style (ASCII-compatible) ---
     # \x1b est le code hexadécimal pour ESC (Escape)
     bold  <- function(x) paste0("\x1b[1m", x, "\x1b[22m")
     cyan  <- function(x) paste0("\x1b[36m", x, "\x1b[39m")
     grey  <- function(x) paste0("\x1b[90m", x, "\x1b[39m")
     green <- function(x) paste0("\x1b[32m", x, "\x1b[39m")
-
     # --- 1. EN-TETE PRINCIPAL ---
     # Remplacement des tirets longs par des tirets ASCII standards
     message(bold(cyan(paste0("--- Market Profile: ", object@Market_full_name, " (", object@Market_short_name, ") "))))
     message(rep("-", max(0, 100 - nchar(object@Market_full_name))), "\n", sep = "")
-
     message(grey("  Link: "), object@Official_url, "\n\n")
-
     # --- 2. RESUME DES COMPOSANTS ---
     message(bold("Summary:\n"))
     # \x2a est l'astérisque '*' (plus portable que le point unicode \x25cf)
@@ -230,22 +261,17 @@ setMethod("show", "african_market", function(object) {
     message(green("  * "), "Indexes : ", length(object@ListIndexes), " tickers available\n")
     message(green("  * "), "Shares  : ", length(object@ListShares), " tickers available\n")
     message("\n")
-
     # --- 3. AFFICHAGE DES TABLES (Format compact) ---
-
     display_section <- function(title, data) {
         n_rows <- nrow(data)
         n_cols <- ncol(data)
-
         # \x76 est le 'v' minuscule (remplace le triangle \x25bd pour la portabilité)
         message(bold(paste0("v ", title)), grey(paste0(" [", n_rows, " x ", n_cols, "]")), "\n", sep = "")
-
         if (n_rows > 0) {
             limit_to_print = 200
             # Note: capture.output est utilisé ici mais le résultat n'est pas message()é
             # Assurez-vous que l'affichage des données est bien celui désiré
             print(head(data, limit_to_print))
-
             if (n_rows > limit_to_print) {
                 message(grey(paste0(" ... and ", n_rows - limit_to_print, " more rows.")), "\n")
             }
@@ -254,12 +280,10 @@ setMethod("show", "african_market", function(object) {
         }
         message("\n")
     }
-
     # Affichage des 3 categories
     display_section("INDEXES DATA", object@Indexes)
     display_section("SHARES DATA", object@Shares)
     display_section("BONDS DATA", object@Bonds)
-
     # --- 4. PIED DE PAGE ---
     message(grey(paste0("Data for ", object@Market_short_name, " | End of report")), "\n")
 })
