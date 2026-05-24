@@ -85,7 +85,7 @@
 #' df <- GET_data("GSE", ticker = "ALL SHARES")
 #'
 #' # Multiple tickers
-#' df <- GET_data("BRVM", ticker = c("SNTS", "SGBCI"))
+# df <- GET_data("BRVM", ticker = c("SNTS", "SGBCI"))
 #'
 #' # Wide format
 #' df <- GET_data("NGX", ticker = "ALL", output_format = "by_row")

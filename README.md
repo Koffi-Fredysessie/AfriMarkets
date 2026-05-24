@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/Fredysessie/AfriMarkets/main/man/figures/logo.png" width="160px" alt="AfriMarkets logo"/>
+<img src="https://raw.githubusercontent.com/Koffi-Fredysessie/AfriMarkets/main/man/figures/logo.png" width="160px" alt="AfriMarkets logo"/>
 
 # AfriMarkets
 
@@ -10,14 +10,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)]()
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html)
-[![GitHub issues](https://img.shields.io/github/issues/Fredysessie/AfriMarkets)](https://github.com/Fredysessie/AfriMarkets/issues)
+[![GitHub issues](https://img.shields.io/github/issues/Koffi-Fredysessie/AfriMarkets)](https://github.com/Koffi-Fredysessie/AfriMarkets/issues)
 
 **AfriMarkets** is an R package that provides unified, programmatic access to
 historical and real-time financial data from African stock exchanges.  
 Built for researchers, data scientists, analysts, and developers working on
 African capital markets.
 
-[Installation](#-installation) · [Quick Start](#-quick-start) · [Markets](#-supported-markets) · [Functions](#-function-reference) · [Shiny Explorer](#%EF%B8%8F-shiny-explorer) · [Contributing](#-contributing)
+[Installation](#-installation) · [Quick Start](#-quick-start) · [Markets](#-supported-markets) · [Functions](#-function-reference) · [Contributing](#-contributing)
 
 </div>
 
@@ -32,7 +32,7 @@ inaccessible to the global data-science community.
 - A **single, consistent API** across heterogeneous exchanges and data sources
 - Ready-to-use **OHLCV data** (Open, High, Low, Close, Volume)
 - Built-in **statistical and financial analysis** tools
-- A **no-code interactive Shiny dashboard** for instant exploration
+- **Interactive charts** powered by `highcharter`
 
 ---
 
@@ -46,7 +46,6 @@ inaccessible to the global data-science community.
 | 🕯️ | Interactive charts | Candlestick & multi-ticker line charts via `highcharter` |
 | 💹 | Performance KPIs | Return, volatility, Sharpe ratio, max drawdown, and more |
 | 🧪 | Statistical tests | Normality and stationarity test batteries |
-| 🖥️ | Shiny explorer | Full GUI — browse, fetch, chart, and test without writing code |
 | ⚡ | Simple API | Consistent function signatures across all markets |
 
 ---
@@ -56,7 +55,7 @@ inaccessible to the global data-science community.
 ```r
 # Install the development version from GitHub
 # install.packages("devtools")
-devtools::install_github("Fredysessie/AfriMarkets")
+devtools::install_github("Koffi-Fredysessie/AfriMarkets")
 ```
 
 > **Note:** An active internet connection is required at install time to
@@ -185,21 +184,6 @@ stationarity_test(
 
 ---
 
-### 6 · Launch the interactive Shiny explorer
-
-```r
-# Full GUI — no extra code needed
-AfriMarkets_explorer()
-
-# Restrict to specific markets
-AfriMarkets_explorer(supported_markets = c("BRVM", "NGX", "JSE"))
-
-# Keep in RStudio viewer pane
-AfriMarkets_explorer(launch.browser = FALSE)
-```
-
----
-
 ## 🔄 Output Formats
 
 | `output_format` | Structure | Best for |
@@ -224,8 +208,7 @@ AfriMarkets_explorer(launch.browser = FALSE)
 
 ## 💹 Performance Indicators
 
-The `AfriMarkets_explorer()` dashboard computes the following KPIs
-over the selected period for each ticker:
+AfriMarkets provides built-in financial KPIs computed over any selected period:
 
 | Indicator | Formula | Interpretation |
 |---|---|---|
@@ -248,6 +231,10 @@ over the selected period for each ticker:
 Tests whether the closing-price (or return) distribution is normal.
 Useful before applying parametric financial models.
 
+```r
+normality_test(df$Close)
+```
+
 ### Stationarity — `stationarity_test(x, type.test)`
 
 | Test | Null Hypothesis | Min. Obs. |
@@ -257,35 +244,18 @@ Useful before applying parametric financial models.
 | Augmented Dickey-Fuller (ADF) | Unit root present (non-stationary) | 7 |
 | Phillips-Perron | Unit root present (non-stationary) | 4 |
 
-- All tests return **p-values**.
-- In the Shiny explorer, results are colour-coded:
-  🟢 **green** (p < 0.05, significant) · 🔴 **red** (p ≥ 0.05, not significant).
+```r
+# All tests
+stationarity_test(df$Close, type.test = "ALL")
+
+# Single test
+stationarity_test(df$Close, type.test = "augmented dickey-fuller test (adf)")
+```
+
+- All tests return **p-values** as a named list.
 - `type.test` matching is **case-insensitive**.
 - Unknown test names are dropped with a diagnostic message.
-
----
-
-## 🖥️ Shiny Explorer
-
-`AfriMarkets_explorer()` launches a full `shinydashboard` application
-with five tabs — no additional code required.
-
-```
-AfriMarkets Explorer
-│
-├── 🕯️  Chart           interactive candlestick / multi-ticker line chart
-├── 📋  OHLCV Data      filterable, scrollable data table
-├── 🏆  Performance     KPI table with one-click CSV download
-├── 🧪  Stat Tests      p-value table with colour-coded significance
-└── 📑  Tickers         full ticker reference for the selected market
-```
-
-**Workflow inside the app:**
-
-1. Select a **market** → click **Load Tickers**
-2. Choose one or more **tickers** → set a **date range** → click **Fetch Data**
-3. Explore results across the five tabs
-4. Click **Run Tests** to compute normality and stationarity tests
+- p < 0.05 → significant · p ≥ 0.05 → not significant.
 
 ---
 
@@ -298,7 +268,6 @@ AfriMarkets Explorer
 | `pplot(x, y, from, to, up.col, down.col)` | `data.frame` or market code + ticker vector | `highchart` object |
 | `normality_test(x)` | Numeric vector or `ts` | Named list of p-values |
 | `stationarity_test(x, type.test)` | Numeric vector or `ts` | Named list of p-values |
-| `AfriMarkets_explorer(supported_markets, ...)` | Market codes, Shiny options | Shiny app (side effect) |
 | `RECOVER_last_download()` | — | Last cached `GET_data()` result |
 
 ---
@@ -316,8 +285,6 @@ AfriMarkets Explorer
 
 ## ⚙️ Dependencies
 
-### Core imports
-
 | Category | Packages |
 |---|---|
 | Data wrangling | `dplyr`, `tidyr`, `tibble`, `purrr`, `magrittr`, `stringr` |
@@ -326,12 +293,6 @@ AfriMarkets Explorer
 | Statistics | `nortest`, `fBasics`, `goftest`, `stats` |
 | Visualisation | `highcharter` |
 | OOP & utilities | `methods`, `rlang` |
-
-### Optional — required only for `AfriMarkets_explorer()`
-
-```r
-install.packages(c("shiny", "shinydashboard", "DT"))
-```
 
 ---
 
@@ -366,7 +327,7 @@ Contributions are welcome — bug fixes, new markets, documentation improvements
 
 ```bash
 # 1. Fork the repo and clone it
-git clone https://github.com/Fredysessie/AfriMarkets.git
+git clone https://github.com/Koffi-Fredysessie/AfriMarkets.git
 
 # 2. Create a feature branch
 git checkout -b feature/add-xyz-market
@@ -392,7 +353,7 @@ No other files need to be modified.
 ## 🐛 Bug Reports & Feature Requests
 
 Found a bug or missing data?  
-👉 [Open an issue](https://github.com/Fredysessie/AfriMarkets/issues)
+👉 [Open an issue](https://github.com/Koffi-Fredysessie/AfriMarkets/issues)
 
 Please include:
 

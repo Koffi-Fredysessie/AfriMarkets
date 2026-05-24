@@ -158,6 +158,8 @@ brvm_share_index_info = function(){
         locate_ticker = startsWith(full_ticker_name,tick)
         if(any(locate_ticker)){
             tick_vec = c(tick_vec,full_ticker_name[which(locate_ticker)])
+        } else {
+            message(paste("Ticker",tick,"not found. Make sure it exists !"))
         }
     }
 
@@ -288,15 +290,15 @@ brvm_share_index_info = function(){
 
 
         if (length(df_period) == 0) {
-            message(paste("[e]\u274C - Data not available for ticker",tick, "between :",from,"-",to))
+            message(paste("[e]\u274C - Data not available for ticker",TickName, "between :",from,"-",to))
             next
         } else {
             df_tick <- dplyr::bind_rows(df_period) %>%
                 dplyr::distinct() %>%
                 dplyr::arrange(Date)
-            message("[100%]\u2705 - Data downloaded for ", tick," between ",min(df_tick$Date)," - ",max(df_tick$Date))
+            message("[100%]\u2705 - Data downloaded for ", TickName," between ",min(df_tick$Date)," - ",max(df_tick$Date))
 
-            df_tickers[[tick]] = df_tick
+            df_tickers[[TickName]] = df_tick
         }
     }
 

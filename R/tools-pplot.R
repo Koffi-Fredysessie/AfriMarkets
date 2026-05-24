@@ -10,11 +10,11 @@
 #'   \item \strong{\code{character} method}: accepts a market code and one or
 #'         more ticker symbols, fetches data automatically via \code{GET_data()},
 #'         then delegates to the \code{data.frame} method. When multiple tickers
-#'         are supplied via \code{y}, all series are fetched and combined before
+#'         are supplied via \code{stock}, all series are fetched and combined before
 #'         rendering, producing a grouped multi-ticker chart.
 #' }
 #'
-#' @param x The primary input. Either:
+#' @param market The primary input. Either:
 #'   \itemize{
 #'     \item A \code{data.frame} with required OHLCV columns (see Details), or
 #'     \item A \code{character} string representing the market code (e.g.,
@@ -22,11 +22,11 @@
 #'   }
 #' @param ticker \code{[data.frame method]} An optional \code{character} string
 #'   used as a fallback ticker label. Ignored when the \code{Ticker} column is
-#'   already present in \code{x}.
-#' @param y \code{[character method only]} A \code{character} vector of one or
+#'   already present in \code{market}.
+#' @param stock \code{[character method only]} A \code{character} vector of one or
 #'   more ticker symbols to retrieve from the given market. Each element is
 #'   passed to \code{GET_data()} individually and the results are row-bound
-#'   before plotting. Example: \code{y = c("BOAB", "BICC", "SIVC")}.
+#'   before plotting. Example: \code{stock = c("BOAB", "BICC", "SIVC")}.
 #' @param from \code{[character method only]} A \code{Date} or \code{character}
 #'   string (coercible to \code{Date}) indicating the start of the data
 #'   retrieval window. Defaults to \code{Sys.Date() - 89} (last 90 days).
@@ -86,13 +86,13 @@
 #'
 #' \strong{character method} workflow:
 #' \enumerate{
-#'   \item Iterates over each element of \code{y} and calls
-#'         \code{GET_data(market_code = x, ticker = y[i], from = from, to = to,
+#'   \item Iterates over each element of \code{stock} and calls
+#'         \code{GET_data(market_code = market, ticker = stock[i], from = from, to = to,
 #'         output_format = "all")} to retrieve OHLCV data.
 #'   \item Row-binds all successfully retrieved \code{data.frame} objects into
 #'         a single combined dataset.
 #'   \item If at least one ticker returned valid data, delegates to
-#'         \code{pplot(x = combined_data, ...)}.
+#'         \code{pplot(market = combined_data, ...)}.
 #'   \item Otherwise, aborts with an informative error message listing all
 #'         tickers that could not be fetched.
 #' }
@@ -124,10 +124,10 @@
 #'
 #' @section Multi-Ticker Support:
 #' The \code{character} method accepts a \code{character} \strong{vector} for
-#' \code{y}, enabling simultaneous visualisation of multiple assets from the
+#' \code{stock}, enabling simultaneous visualisation of multiple assets from the
 #' same market:
 #' \preformatted{
-#' pplot(x = "BRVM", y = c("BOAB", "BICC", "SIVC"),
+#' pplot(market = "BRVM", stock = c("BOAB", "BICC", "SIVC"),
 #'       from = "2024-01-01", to = Sys.Date())
 #' }
 #' Tickers that fail to return data are skipped with a warning; plotting
@@ -144,7 +144,7 @@
 #' }
 #'
 #' @importFrom rlang abort
-#' @importFrom dplyr mutate group_by arrange case_when lag bind_rows
+#' @importFrom dplyr mutate group_by arrange case_when lag bind_rows ungroup
 #' @importFrom xts xts
 #' @importFrom highcharter highchart hc_title hc_add_series hcaes
 #'   hc_add_yAxis hc_yAxis_multiples hc_rangeSelector hc_exporting hc_xAxis
@@ -162,41 +162,14 @@
 #'   Volume = sample(1e6:5e6, 60),
 #'   Ticker = "BOAB"
 #' )
-#' pplot(x = df, up.col = "darkgreen", down.col = "red")
-#'
-#' # ---- data.frame method: multiple tickers ----
-#' df_multi <- dplyr::bind_rows(
-#'   data.frame(
-#'     Date   = seq(as.Date("2024-01-01"), by = "day", length.out = 30),
-#'     Open   = runif(30, 100, 110), High = runif(30, 110, 120),
-#'     Low    = runif(30, 90,  100), Close = runif(30, 100, 115),
-#'     Volume = sample(1e6:5e6, 30), Ticker = "BOAB"
-#'   ),
-#'   data.frame(
-#'     Date   = seq(as.Date("2024-01-01"), by = "day", length.out = 30),
-#'     Open   = runif(30, 200, 210), High = runif(30, 210, 220),
-#'     Low    = runif(30, 190, 200), Close = runif(30, 200, 215),
-#'     Volume = sample(1e6:5e6, 30), Ticker = "BICC"
-#'   )
-#' )
-#' pplot(x = df_multi)
+#' pplot(market = df, up.col = "darkgreen", down.col = "red")
 #'
 #' # ---- character method: single ticker ----
 #' pplot(
-#'   x    = "BRVM",
-#'   y    = "BICC",
-#'   from = as.Date("2024-01-01"),
-#'   to   = Sys.Date()
-#' )
-#'
-#' # ---- character method: multiple tickers simultaneously ----
-#' pplot(
-#'   x    = "BRVM",
-#'   y    = c("BOAB", "BICC", "SIVC"),
-#'   from = as.Date("2024-01-01"),
-#'   to   = Sys.Date(),
-#'   up.col   = "steelblue",
-#'   down.col = "tomato"
+#'   market = "BRVM",
+#'   stock  = "BICC",
+#'   from   = as.Date("2024-01-01"),
+#'   to     = Sys.Date()
 #' )
 #' }
 #'
@@ -209,7 +182,7 @@
 #' @rdname pplot
 #' @aliases pplot,data.frame-method pplot,character-method
 #' @export
-setGeneric("pplot", function(x, ...) standardGeneric("pplot"))
+setGeneric("pplot", function(market, ...) standardGeneric("pplot"))
 
 
 # ==============================================================================
@@ -220,40 +193,67 @@ setGeneric("pplot", function(x, ...) standardGeneric("pplot"))
 #' @export
 setMethod(
     "pplot",
-    signature(x = "data.frame"),
-    function(x, ticker = NULL, up.col = "darkgreen", down.col = "red", ...) {
+    signature(market = "data.frame"),
+
+    function(
+        market,
+        ticker = NULL,
+        up.col = "darkgreen",
+        down.col = "red",
+        ...
+    ) {
 
         tryCatch({
 
             # ========================= VALIDATION
-            required_cols <- c("Date", "Open", "High", "Low", "Close", "Volume", "Ticker")
-            missing_cols  <- setdiff(required_cols, colnames(x))
+            required_cols <- c(
+                "Date", "Open", "High",
+                "Low", "Close", "Volume",
+                "Ticker"
+            )
+
+            missing_cols <- setdiff(required_cols, colnames(market))
+
             if (length(missing_cols) > 0) {
+
                 rlang::abort(
                     paste0(
                         "The data.frame is missing required column(s): ",
-                        paste(missing_cols, collapse = ", "), "."
+                        paste(missing_cols, collapse = ", "),
+                        "."
                     )
                 )
             }
 
             # ========================= PREPROCESSING
-            x <- x %>%
-                dplyr::mutate(Date = as.Date(Date)) %>%
-                dplyr::group_by(Ticker) %>%
-                dplyr::arrange(Date, .by_group = TRUE) %>%
+            market <- market %>%
+
                 dplyr::mutate(
+                    Date = as.Date(Date)
+                ) %>%
+
+                dplyr::group_by(Ticker) %>%
+
+                dplyr::arrange(
+                    Date,
+                    .by_group = TRUE
+                ) %>%
+
+                dplyr::mutate(
+
                     Direction = dplyr::case_when(
+
                         Close > dplyr::lag(Close) ~ "up",
                         Close < dplyr::lag(Close) ~ "down",
                         TRUE                      ~ "flat"
                     )
                 ) %>%
+
                 dplyr::ungroup()
 
-            date1    <- min(x$Date)
-            date2    <- max(x$Date)
-            tickers  <- unique(x$Ticker)
+            date1    <- min(market$Date)
+            date2    <- max(market$Date)
+            tickers  <- unique(market$Ticker)
             n_ticker <- length(tickers)
 
             # ========================= SINGLE TICKER
@@ -262,52 +262,99 @@ setMethod(
                 ticker <- tickers[[1L]]
 
                 ohlcv_xts <- xts::xts(
-                    x          = x[, c("Open", "High", "Low", "Close", "Volume")],
-                    order.by   = x$Date
+                    x = market[, c(
+                        "Open", "High",
+                        "Low", "Close",
+                        "Volume"
+                    )],
+                    order.by = market$Date
                 )
 
-                market.pplot <- highcharter::highchart(type = "stock") %>%
+                market.pplot <- highcharter::highchart(
+                    type = "stock"
+                ) %>%
+
                     highcharter::hc_title(
-                        text = paste0(ticker, " | from ", date1, " to ", date2)
+                        text = paste0(
+                            ticker,
+                            " | from ",
+                            date1,
+                            " to ",
+                            date2
+                        )
                     ) %>%
+
                     highcharter::hc_add_series(
                         ohlcv_xts,
                         name    = ticker,
                         upColor = up.col,
                         color   = down.col
                     ) %>%
-                    highcharter::hc_add_yAxis(nid = 1L, relative = 1) %>%
+
+                    highcharter::hc_add_yAxis(
+                        nid = 1L,
+                        relative = 1
+                    ) %>%
+
                     highcharter::hc_add_series(
-                        data = x,
-                        type = "column",
+                        data  = market,
+                        type  = "column",
                         yAxis = 1L,
                         name  = "Volume",
-                        highcharter::hcaes(x = Date, y = Volume, group = Direction)
+                        highcharter::hcaes(
+                            x     = Date,
+                            y     = Volume,
+                            group = Direction
+                        )
                     ) %>%
+
                     highcharter::hc_yAxis_multiples(
-                        list(title = list(text = "Price"),  height = "75%"),
-                        list(title = list(text = "Volume"), height = "20%",
-                             top = "80%", offset = 0)
+                        list(
+                            title  = list(text = "Price"),
+                            height = "75%"
+                        ),
+                        list(
+                            title  = list(text = "Volume"),
+                            height = "20%",
+                            top    = "80%",
+                            offset = 0
+                        )
                     ) %>%
-                    highcharter::hc_rangeSelector(enabled = TRUE) %>%
+
+                    highcharter::hc_rangeSelector(
+                        enabled = TRUE
+                    ) %>%
+
                     highcharter::hc_exporting(
                         enabled  = TRUE,
-                        filename = paste0(ticker, "_chart")
+                        filename = paste0(
+                            ticker,
+                            "_chart"
+                        )
                     )
 
             } else {
 
                 # ========================= MULTI TICKER
-                market.pplot <- highcharter::highchart(type = "stock") %>%
+                market.pplot <- highcharter::highchart(
+                    type = "stock"
+                ) %>%
+
                     highcharter::hc_title(
                         text = paste0(
-                            "Tickers: ", paste(tickers, collapse = ", "),
-                            " | from ", date1, " to ", date2
+                            "Tickers: ",
+                            paste(tickers, collapse = ", "),
+                            " | from ",
+                            date1,
+                            " to ",
+                            date2
                         )
                     ) %>%
+
                     highcharter::hc_add_series(
-                        data  = x,
-                        type  = "candlestick",
+                        data = market,
+                        type = "candlestick",
+
                         highcharter::hcaes(
                             x     = Date,
                             open  = Open,
@@ -317,17 +364,32 @@ setMethod(
                             group = Ticker
                         )
                     ) %>%
+
                     highcharter::hc_add_series(
-                        data  = x,
-                        type  = "line",
-                        highcharter::hcaes(x = Date, y = Close, group = Ticker)
+                        data = market,
+                        type = "line",
+
+                        highcharter::hcaes(
+                            x     = Date,
+                            y     = Close,
+                            group = Ticker
+                        )
                     ) %>%
-                    highcharter::hc_xAxis(title = list(text = "")) %>%
-                    highcharter::hc_rangeSelector(enabled = TRUE) %>%
+
+                    highcharter::hc_xAxis(
+                        title = list(text = "")
+                    ) %>%
+
+                    highcharter::hc_rangeSelector(
+                        enabled = TRUE
+                    ) %>%
+
                     highcharter::hc_exporting(
-                        enabled  = TRUE,
+                        enabled = TRUE,
+
                         filename = paste0(
-                            paste(tickers, collapse = "_"), "_chart"
+                            paste(tickers, collapse = "_"),
+                            "_chart"
                         )
                     )
             }
@@ -335,10 +397,21 @@ setMethod(
             return(market.pplot)
 
         }, error = function(e) {
-            message("[pplot] Error: ", conditionMessage(e))
+
+            message(
+                "[pplot] Error: ",
+                conditionMessage(e)
+            )
+
             return(invisible(NULL))
+
         }, warning = function(w) {
-            message("[pplot] Warning: ", conditionMessage(w))
+
+            message(
+                "[pplot] Warning: ",
+                conditionMessage(w)
+            )
+
             return(invisible(NULL))
         })
     }
@@ -346,85 +419,137 @@ setMethod(
 
 
 # ==============================================================================
-# METHOD 2 : character  — supporte y = c("BOAB", "BICC", ...)
+# METHOD 2 : character
 # ==============================================================================
 
 #' @rdname pplot
 #' @export
 setMethod(
+
     "pplot",
-    signature(x = "character"),
-    function(x, y, from = Sys.Date() - 89, to = Sys.Date(),
-             up.col = "darkgreen", down.col = "red", ...) {
+
+    signature(market = "character"),
+
+    function(
+        market,
+        stock,
+        from = Sys.Date() - 89,
+        to = Sys.Date(),
+        up.col = "darkgreen",
+        down.col = "red",
+        ...
+    ) {
 
         tryCatch({
 
-            # ---- normalisation des dates ----------------------------------------
+            # ========================= DATE VALIDATION
             from <- as.Date(from)
             to   <- as.Date(to)
 
             if (is.na(from) || is.na(to)) {
-                rlang::abort("`from` and `to` must be coercible to Date.")
+
+                rlang::abort(
+                    "`from` and `to` must be coercible to Date."
+                )
             }
+
             if (from > to) {
-                rlang::abort("`from` must be earlier than or equal to `to`.")
+
+                rlang::abort(
+                    "`from` must be earlier than or equal to `to`."
+                )
             }
 
-            # ---- validation de y ------------------------------------------------
-            if (missing(y) || !is.character(y) || length(y) == 0L) {
-                rlang::abort("`y` must be a non-empty character vector of ticker symbols.")
+            # ========================= STOCK VALIDATION
+            if (
+                missing(stock) ||
+                !is.character(stock) ||
+                length(stock) == 0L
+            ) {
+
+                rlang::abort(
+                    "`stock` must be a non-empty character vector of ticker symbols."
+                )
             }
 
-            y <- trimws(unique(y))   # dédoublonner + nettoyer les espaces
+            stock <- trimws(unique(stock))
 
-            # ---- récupération des données pour chaque ticker --------------------
-            collected   <- vector("list", length(y))
-            failed      <- character(0L)
+            # ========================= DATA COLLECTION
+            collected <- vector("list", length(stock))
+            failed    <- character(0L)
 
-            for (i in seq_along(y)) {
-                ticker_i <- y[[i]]
-                result   <- tryCatch(
+            for (i in seq_along(stock)) {
+
+                ticker_i <- stock[[i]]
+
+                result <- tryCatch(
+
                     GET_data(
-                        market_code   = x,
-                        ticker        = ticker_i,
-                        from          = from,
-                        to            = to,
+
+                        market_code = market,
+                        ticker      = ticker_i,
+                        from        = from,
+                        to          = to,
                         output_format = "all"
                     ),
-                    error   = function(e) NULL,
+
+                    error = function(e) NULL,
                     warning = function(w) NULL
                 )
 
-                if (is.list(result) && is.data.frame(result$by_col) &&
-                    nrow(result$by_col) > 0L) {
+                if (
+                    is.list(result) &&
+                    is.data.frame(result$by_col) &&
+                    nrow(result$by_col) > 0L
+                ) {
+
                     collected[[i]] <- result$by_col
+
                 } else {
+
                     failed <- c(failed, ticker_i)
+
                     message(
                         "[pplot] Warning: no data retrieved for ticker '",
-                        ticker_i, "' on market '", x, "'. Skipping."
+                        ticker_i,
+                        "' on market '",
+                        market,
+                        "'. Skipping."
                     )
                 }
             }
 
-            # ---- vérification qu'au moins un ticker a retourné des données -----
-            collected <- Filter(Negate(is.null), collected)
+            # ========================= CHECK VALID DATA
+            collected <- Filter(
+                Negate(is.null),
+                collected
+            )
 
             if (length(collected) == 0L) {
+
                 rlang::abort(
+
                     paste0(
                         "No data could be retrieved for any of the requested ",
-                        "ticker(s): ", paste(y, collapse = ", "),
-                        " on market '", x, "' between ", from, " and ", to, "."
+                        "ticker(s): ",
+                        paste(stock, collapse = ", "),
+                        " on market '",
+                        market,
+                        "' between ",
+                        from,
+                        " and ",
+                        to,
+                        "."
                     )
                 )
             }
 
-            # ---- combinaison et délégation à la méthode data.frame -------------
+            # ========================= COMBINE DATA
             combined_data <- dplyr::bind_rows(collected)
 
+            # ========================= DELEGATE
             market.pplot <- pplot(
-                x        = combined_data,
+                market   = combined_data,
                 up.col   = up.col,
                 down.col = down.col,
                 ...
@@ -433,10 +558,21 @@ setMethod(
             return(market.pplot)
 
         }, error = function(e) {
-            message("[pplot] Error: ", conditionMessage(e))
+
+            message(
+                "[pplot] Error: ",
+                conditionMessage(e)
+            )
+
             return(invisible(NULL))
+
         }, warning = function(w) {
-            message("[pplot] Warning: ", conditionMessage(w))
+
+            message(
+                "[pplot] Warning: ",
+                conditionMessage(w)
+            )
+
             return(invisible(NULL))
         })
     }
