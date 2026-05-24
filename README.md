@@ -145,18 +145,18 @@ result$by_row   # wide format data.frame
 
 ```r
 # Single ticker — candlestick + colour-coded volume bars
-pplot(x = "BRVM", y = "BICC", from = "2023-01-01")
+pplot(market = "BRVM", stock = "BICC", from = "2023-01-01")
 
 # Multiple tickers simultaneously — grouped line chart
 pplot(
-  x    = "BRVM",
-  y    = c("BICC", "BOAB", "SNTS"),
+  market = "BRVM",
+  stock = c("BICC", "BOAB", "SNTS"),
   from = "2023-01-01",
   to   = Sys.Date()
 )
 
 # From a data.frame directly
-pplot(x = df, up.col = "darkgreen", down.col = "red")
+pplot(market = df, up.col = "darkgreen", down.col = "red")
 ```
 
 ---
@@ -265,7 +265,7 @@ stationarity_test(df$Close, type.test = "augmented dickey-fuller test (adf)")
 |---|---|---|
 | `GET_tickers(market_code)` | `"BRVM"`, `"NGX"`, …, `"ALL"` | S4 `african_market` or named list |
 | `GET_data(market_code, ticker, from, to, output_format)` | See above | `data.frame` or named list |
-| `pplot(x, y, from, to, up.col, down.col)` | `data.frame` or market code + ticker vector | `highchart` object |
+| `pplot(market, stock, from, to, up.col, down.col)` | `data.frame` or market code + ticker vector | `highchart` object |
 | `normality_test(x)` | Numeric vector or `ts` | Named list of p-values |
 | `stationarity_test(x, type.test)` | Numeric vector or `ts` | Named list of p-values |
 | `RECOVER_last_download()` | — | Last cached `GET_data()` result |
