@@ -1,3 +1,76 @@
+#' Recursively Find a Value by Key in a Nested JSON/List Structure
+#'
+#' This function searches for a specified key within a nested list or JSON-like
+#' structure and returns the first matching value found. The search is performed
+#' recursively, exploring all levels of the structure until the key is located.
+#'
+#' If multiple occurrences of the key exist, only the first encountered value
+#' (in depth-first order) is returned. If the key is not found, the function
+#' returns \code{NULL}.
+#'
+#' @param x A list or JSON-like object (typically obtained from parsing JSON)
+#'   in which to search for the key.
+#' @param key A character string representing the name of the key to search for.
+#'
+#' @return The value associated with the first occurrence of the specified key,
+#'   or \code{NULL} if the key is not found.
+#'
+#' @details
+#' The function works recursively:
+#' \itemize{
+#'   \item If \code{x} is a list and contains the key, the corresponding value is returned.
+#'   \item Otherwise, the function applies itself to each element of the list.
+#'   \item The first non-\code{NULL} result is returned.
+#' }
+#'
+#' This function is particularly useful for navigating deeply nested JSON
+#' structures where the exact location of a key is unknown.
+#'
+#' @examples
+#' \dontrun{
+#' library(purrr)
+#'
+#' nested_list <- list(
+#'   a = list(
+#'     b = list(
+#'       target = 42
+#'     )
+#'   ),
+#'   c = list(
+#'     d = 100
+#'   )
+#' )
+#'
+#' find_key_in_json(nested_list, "target")
+#' # Returns 42
+#'
+#' find_key_in_json(nested_list, "d")
+#' # Returns 100
+#'
+#' find_key_in_json(nested_list, "not_here")
+#' # Returns NULL
+#' }
+#'
+#' @importFrom purrr map compact
+#'
+find_key_in_json <- function(x, key) {
+    if (is.list(x)) {
+        if (key %in% names(x)) {
+            return(x[[key]])
+        } else {
+            result <- map(x, ~ find_key_in_json(.x, key))
+            result <- compact(result)
+            if (length(result) > 0) {
+                return(result[[1]])
+            }
+        }
+    }
+    return(NULL)
+}
+
+
+
+
 #' Create an HTTP Client Session with Persistent Headers and Cookies
 #'
 #' This function initializes an HTTP session using \code{httr}, retrieves
@@ -49,36 +122,24 @@ create_client_session <- function(url, base_url = NULL, original_headers = NULL)
     if(is.null(base_url)) base_url = url
 
     if(is.null(original_headers)) {
-        original_headers = c(
-            accept = "*/*",
-            `accept-language` = "en-US,en;q=0.9,fr-FR;q=0.8,fr;q=0.7",
-            origin = base_url,
-            priority = "u=1, i",
-            referer = base_url,
-            `user-agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-        )
+        test_url = httr::HEAD(base_url)
+
+        if(test_url$status_code != 200) {
+            rlang::abort("Connection to server failed!")
+        } else {
+            headers = test_url$all_headers[[1]]
+            cookies = test_url$cookies
+            .pkg_env$`start-time-session` = Sys.time()
+        }
     }
 
     h = httr::handle(base_url)
-    req <- httr::GET(url = url, httr::add_headers(.headers = original_headers), handle = h)
-
-    if(req$status_code == 200) {
-        .pkg_env$`start-time-session` = Sys.time()
-    } else {
-        rlang::abort("Connection to server failed!")
-    }
-
-    headers = paste(paste0(names(req$all_headers), "=", unlist(req$all_headers)), collapse = "; ")
-    headers2 = paste(paste0(names(req$headers), "=", unlist(req$headers)), collapse = "; ")
-    cookies = paste(paste0(req$cookies$name, "=", req$cookies$value), collapse = "; ")
 
     session = list(
-        basic_req = req,
         headers = headers,
-        mini_headers = headers2,
         cookies = cookies,
         handle = h,
-        buildID = req$headers$`inv-version`,
+        buildID = find_key_in_json(test_url$all_headers,"inv-version"),
         original_headers = original_headers
     )
 
