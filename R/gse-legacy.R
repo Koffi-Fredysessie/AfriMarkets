@@ -126,13 +126,10 @@ gse_share_info = function(table_id = "34"){
     url_share = "https://gse.com.gh/wp-admin/admin-ajax.php"
     wdtnonce_id = get_gse_wdtnonce_id(url_for_wdtnonce = "https://gse.com.gh/listed-companies/",node = paste("wdtNonceFrontendEdit",table_id,sep = "_"))
 
-    headers <- c(
-        "Upgrade-Insecure-Requests" = "1",
-        "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-        "sec-ch-ua" = "\"Chromium\";v=\"142\", \"Google Chrome\";v=\"142\", \"Not_A Brand\";v=\"99\"",
-        "sec-ch-ua-mobile" = "?0",
-        "sec-ch-ua-platform" = "\"Windows\""
-    )
+    session = active_client_session(verb = "GET",url = url_share,base_url = "https://gse.com.gh/")
+
+    headers = session$formated_headers
+    cookies = session$formated_cookies
 
     data = list(
         draw = "1",
@@ -195,7 +192,8 @@ gse_share_info = function(table_id = "34"){
     # Requête HTTP
     res <- try(POST(url_share,
                     query = params,
-                   add_headers(.headers=headers),
+                   httr::add_headers(.headers=headers),
+                   httr::set_cookies(.cookies = cookies),
                    timeout(30),
                    body = data,
                    encode = "form"), silent = TRUE)
@@ -253,13 +251,9 @@ gse_share_info = function(table_id = "34"){
 #'
 get_gse_wdtnonce_id = function(url_for_wdtnonce,node){
 
-    headers <- c(
-        "Upgrade-Insecure-Requests" = "1",
-        "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-        "sec-ch-ua" = "\"Chromium\";v=\"142\", \"Google Chrome\";v=\"142\", \"Not_A Brand\";v=\"99\"",
-        "sec-ch-ua-mobile" = "?0",
-        "sec-ch-ua-platform" = "\"Windows\""
-    )
+    session = active_client_session(verb = "GET",url = url_for_wdtnonce,base_url = "https://gse.com.gh/")
+
+    headers = session$formated_headers
 
     res <- try(GET(url_for_wdtnonce,
                    add_headers(.headers=headers),
@@ -531,7 +525,7 @@ get_gse_index_share = function(){
 
         for(i in 1:(length(periods) - 1)) {  # parcourir les intervalles de periode
 
-            session = active_client_session(url = base_url)
+            session = active_client_session(verb = "GET",url = base_url)
 
             from_date <- format(as.Date(periods[i]),"%d/%m/%Y")
             to_date <- format(as.Date(periods[i+1]),"%d/%m/%Y")

@@ -70,77 +70,210 @@ find_key_in_json <- function(x, key) {
 
 
 
-
 #' Create an HTTP Client Session with Persistent Headers and Cookies
 #'
-#' This function initializes an HTTP session using \code{httr}, retrieves
-#' response headers and cookies, and stores session metadata in a local
-#' environment for reuse. It is designed to mimic a browser session when
-#' interacting with web APIs or scraping dynamic websites.
+#' @description
+#' Initialises a stateful HTTP session by sending a probe request to
+#' \code{base_url}, extracting the server's response headers and cookies,
+#' then performing a fully authenticated retry request to \code{url}.
+#' The resulting session object is stored in the package-level environment
+#' \code{.pkg_env} for reuse by \code{\link{active_client_session}}.
+#' The request mimics a real browser user-agent built from the local
+#' system information.
 #'
-#' @param url A character string specifying the target URL to initiate the session.
-#' @param base_url A character string specifying the base URL used to create the
-#'   HTTP handle. Defaults to \code{url} if not provided.
-#' @param original_headers A named character vector of HTTP headers to include
-#'   in the request. If \code{NULL}, a default browser-like header set is used.
+#' @param verb A \code{character} string specifying the HTTP method to use
+#'   (e.g., \code{"GET"}, \code{"POST"}). Passed directly to
+#'   \code{httr::VERB()} and \code{httr::RETRY()}.
+#' @param url A \code{character} string giving the target URL for the
+#'   authenticated session request (may differ from \code{base_url}).
+#' @param base_url A \code{character} string giving the base URL used for
+#'   the probe request and handle creation. Defaults to \code{url} when
+#'   \code{NULL}.
+#' @param query A named \code{list} of query parameters appended to the
+#'   request URL. Defaults to \code{NULL} (no query string).
+#' @param original_headers A named \code{character} vector of custom HTTP
+#'   headers. When \code{NULL} (default), headers are automatically derived
+#'   from the probe response; otherwise the provided headers are used
+#'   directly.
+#' @param pause A \code{numeric} scalar (seconds) setting the cap for the
+#'   exponential back-off between retries. Defaults to \code{3}.
+#' @param times A \code{numeric} scalar giving the maximum number of retry
+#'   attempts. Defaults to \code{5}.
 #'
-#' @return A list representing the session with the following elements:
-#' \itemize{
-#'   \item \code{basic_req}: The original \code{httr} response object
-#'   \item \code{headers}: Flattened string of all response headers
-#'   \item \code{mini_headers}: Simplified headers from the response
-#'   \item \code{cookies}: Cookie string extracted from the response
-#'   \item \code{handle}: The \code{httr} handle used for persistent sessions
-#'   \item \code{buildID}: Version identifier extracted from headers (if available)
-#'   \item \code{original_headers}: Headers used to create the request
-#' }
+#' @return A named \code{list} representing the session, with the following
+#'   elements:
+#'   \describe{
+#'     \item{\code{basic_req}}{The final \code{httr} response object from
+#'           the authenticated request to \code{url}.}
+#'     \item{\code{headers}}{Raw \code{httr} response headers from the
+#'           probe request (\code{httr::headers()}).}
+#'     \item{\code{formated_headers}}{Named \code{character} vector of
+#'           flattened headers ready for use in \code{httr::add_headers()}.}
+#'     \item{\code{cookies}}{Raw cookie data frame from the probe response
+#'           (\code{httr::cookies()}).}
+#'     \item{\code{formated_cookies}}{Named \code{character} vector of
+#'           cookies ready for use in \code{httr::set_cookies()}.}
+#'     \item{\code{handle}}{The persistent \code{httr} handle bound to
+#'           \code{base_url}.}
+#'     \item{\code{buildID}}{The \code{"inv-version"} header value extracted
+#'           from \code{all_headers} via \code{find_key_in_json()}, or
+#'           \code{NULL} if absent.}
+#'     \item{\code{original_headers}}{The \code{original_headers} argument
+#'           as passed by the caller.}
+#'     \item{\code{user_agent}}{The \code{httr} user-agent object built from
+#'           local system information.}
+#'   }
+#'   The session is also stored in \code{.pkg_env$`current-session`} and
+#'   the creation timestamp in \code{.pkg_env$`start-time-session`}.
 #'
 #' @details
-#' The function performs the following steps:
+#' The function proceeds through the following steps:
 #' \enumerate{
-#'   \item Creates an HTTP handle using \code{httr::handle()}.
-#'   \item Sends a GET request with custom headers.
-#'   \item Validates the response status code.
-#'   \item Extracts headers and cookies from the response.
-#'   \item Stores session metadata in \code{.pkg_env}.
+#'   \item Builds a \code{User-Agent} string from \code{verb},
+#'         \code{"httr"}, the local OS name, and OS version via
+#'         \code{Sys.info()}.
+#'   \item Falls back \code{base_url <- url} if \code{base_url} is
+#'         \code{NULL}.
+#'   \item When \code{original_headers} is \code{NULL}:
+#'     \enumerate{
+#'       \item Sends a probe \code{VERB} request to \code{base_url}.
+#'       \item Aborts with \code{rlang::abort()} if the status is not
+#'             \code{200}.
+#'       \item Extracts response headers; if \code{domain-id} is missing,
+#'             injects \code{accept}, \code{access-control-request-headers},
+#'             and \code{domain-id} (via the internal helper
+#'             \code{extract_subdomain()}).
+#'       \item Extracts cookies and creates a persistent \code{httr} handle.
+#'       \item Sends a fully authenticated \code{RETRY} request to
+#'             \code{url} (up to \code{times} attempts, back-off capped at
+#'             \code{pause} seconds).
+#'       \item Records \code{Sys.time()} in
+#'             \code{.pkg_env$`start-time-session`}.
+#'     }
+#'   \item Assembles and returns the session list.
 #' }
 #'
-#' This function is useful for maintaining authenticated or stateful
-#' interactions with web services.
+#' @section Package Environment:
+#' This function writes to the following keys in \code{.pkg_env}:
+#' \itemize{
+#'   \item \code{.pkg_env$`current-session`}: the complete session list.
+#'   \item \code{.pkg_env$`start-time-session`}: \code{POSIXct} timestamp
+#'         of session creation, used by \code{active_client_session()} for
+#'         TTL checks.
+#' }
+#'
+#' @section Internal Dependencies:
+#' \itemize{
+#'   \item \code{extract_subdomain(url)}: extracts the subdomain from a URL
+#'         string for the \code{domain-id} header.
+#'   \item \code{find_key_in_json(x, key)}: recursively searches response
+#'         headers for the \code{"inv-version"} build identifier.
+#' }
+#'
+#' @section Error Handling:
+#' \itemize{
+#'   \item If the probe request to \code{base_url} returns a non-200 status,
+#'         \code{rlang::abort("Connection to server failed!")} is called
+#'         immediately.
+#'   \item Transient failures during the authenticated request are retried
+#'         automatically up to \code{times} times.
+#' }
+#'
+#' @importFrom httr VERB RETRY handle add_headers set_cookies cookies headers user_agent
+#' @importFrom rlang abort
 #'
 #' @examples
 #' \dontrun{
-#' session <- create_client_session("https://www.investing.com")
-#' session$cookies
+#' # Basic session on the default Investing.com site
+#' session <- create_client_session(
+#'   verb     = "GET",
+#'   url      = "https://www.investing.com"
+#' )
+#' session$buildID
+#' session$formated_cookies
+#'
+#' # Session with a distinct base URL and target URL
+#' session <- create_client_session(
+#'   verb     = "GET",
+#'   url      = "https://api.investing.com/api/financialdata/assets",
+#'   base_url = "https://www.investing.com",
+#'   pause    = 5,
+#'   times    = 3
+#' )
 #' }
 #'
-#' @importFrom httr GET handle add_headers
-#' @importFrom rlang abort
+#' @seealso
+#' \code{\link{active_client_session}},
+#' \code{\link[httr]{RETRY}},
+#' \code{\link[httr]{handle}}
 #'
-create_client_session <- function(url, base_url = NULL, original_headers = NULL) {
+#' @keywords internal
+create_client_session <- function(verb,url,base_url = NULL, query = NULL, original_headers = NULL,pause = 3,times = 5) {
+
+    local_sys_info = Sys.info()
+    req_user_agent = httr::user_agent(paste(
+        verb,
+        "httr",
+        local_sys_info[["sysname"]],
+        local_sys_info[["version"]]
+    ))
 
     if(is.null(base_url)) base_url = url
 
     if(is.null(original_headers)) {
-        test_url = httr::HEAD(base_url)
+        test_req = httr::VERB(verb = verb,url = base_url,req_user_agent)
 
-        if(test_url$status_code != 200) {
+        if(test_req$status_code != 200) {
             rlang::abort("Connection to server failed!")
         } else {
-            headers = test_url$all_headers[[1]]
-            cookies = test_url$cookies
+
+            req_headers = httr::headers(test_req)
+            if(!("domain-id" %in% names(req_headers))){
+                req_headers$accept = "*/*"
+                # req_headers$`accept-language` = "fr,fr-FR;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6"
+                req_headers$`access-control-request-headers` = "domain-id"
+                req_headers$`domain-id` = extract_subdomain(base_url)
+            }
+
+            req_cookies = httr::cookies(test_req)
+            h = httr::handle(base_url)
+
+            formated_headers = unlist(req_headers)
+            names(formated_headers) = names(req_headers)
+
+            formated_cookies = test_req$cookies$value
+            names(formated_cookies) = test_req$cookies$name
+
+            basic_req = httr::VERB(verb = verb,url = url,handle = h,httr::add_headers(formated_headers),query = query,req_user_agent)
+
+            basic_req = httr::RETRY(
+                verb = verb,
+                url = url,
+                httr::add_headers(.headers = formated_headers),
+                httr::set_cookies(.cookies = formated_cookies),
+                handle = h,
+                query = query,
+                req_user_agent,
+                times = times,
+                pause_base = 1,
+                pause_cap = pause,
+                quiet = TRUE
+            )
+
             .pkg_env$`start-time-session` = Sys.time()
         }
     }
 
-    h = httr::handle(base_url)
-
     session = list(
-        headers = headers,
-        cookies = cookies,
+        basic_req = basic_req,
+        headers = req_headers,
+        formated_headers = formated_headers,
+        cookies = req_cookies,
+        formated_cookies = formated_cookies,
         handle = h,
-        buildID = find_key_in_json(test_url$all_headers,"inv-version"),
-        original_headers = original_headers
+        buildID = find_key_in_json(test_req$all_headers,"inv-version"),
+        original_headers = original_headers,
+        user_agent = req_user_agent
     )
 
     .pkg_env$`current-session` = session
@@ -149,45 +282,104 @@ create_client_session <- function(url, base_url = NULL, original_headers = NULL)
 }
 
 
+
+
+
 #' Retrieve or Refresh an Active HTTP Client Session
 #'
-#' This function returns an active HTTP session stored in a local environment.
-#' If the current session has expired or is invalid, a new session is created
-#' using \code{create_client_session()}.
+#' @description
+#' Returns the current HTTP session stored in \code{.pkg_env}, refreshing
+#' it transparently when it has expired (TTL exceeded) or when the target
+#' URL has changed. If no valid session exists, a new one is created via
+#' \code{\link{create_client_session}}. This function is the recommended
+#' entry point for all internal HTTP requests that require session
+#' continuity.
 #'
-#' @param url A character string specifying the target URL.
-#' @param base_url A character string specifying the base URL for the session.
-#' @param session A session object previously created by
-#'   \code{create_client_session()}. Defaults to the current session stored in
-#'   \code{.pkg_env}.
+#' @param verb A \code{character} string specifying the HTTP method
+#'   (e.g., \code{"GET"}, \code{"POST"}). Forwarded to
+#'   \code{\link{create_client_session}} when a new session is needed.
+#' @param url A \code{character} string giving the target URL. A trailing
+#'   slash is appended automatically if absent before comparison with the
+#'   stored session URL.
+#' @param base_url A \code{character} string for the base URL used when
+#'   creating a new session. Defaults to \code{NULL} (falls back to
+#'   \code{url} inside \code{\link{create_client_session}}).
+#' @param query A named \code{list} of URL query parameters. Defaults to
+#'   \code{NULL}.
+#' @param original_headers A named \code{character} vector of custom HTTP
+#'   headers forwarded to \code{\link{create_client_session}} if a new
+#'   session must be created. Defaults to \code{NULL}.
+#' @param session A session \code{list} as returned by
+#'   \code{\link{create_client_session}}. Defaults to
+#'   \code{.pkg_env$`current-session`} (the package-level cached session).
+#' @param pause A \code{numeric} scalar (seconds) capping the retry
+#'   back-off. Defaults to \code{3}. Forwarded to
+#'   \code{\link{create_client_session}}.
+#' @param times A \code{numeric} scalar giving the maximum number of retry
+#'   attempts. Defaults to \code{5}. Forwarded to
+#'   \code{\link{create_client_session}}.
 #'
-#' @return A valid session object (list) containing request, headers, cookies,
-#'   and handle information.
+#' @return A valid session \code{list} (see \code{\link{create_client_session}}
+#'   for the full structure), guaranteed to correspond to the requested
+#'   \code{url} and to be within its TTL at the time of return.
 #'
 #' @details
-#' The function performs the following checks:
+#' The function applies the following decision logic in order:
 #' \enumerate{
-#'   \item Verifies if the session exists and has not expired.
-#'   \item If expired or missing, creates a new session.
-#'   \item Ensures the URL ends with a trailing slash.
-#'   \item Compares the requested URL with the session URL.
-#'   \item Refreshes the session if the URL has changed.
+#'   \item \strong{TTL / NULL check}: if \code{session} is \code{NULL}
+#'         \emph{or} the elapsed time since
+#'         \code{.pkg_env$`start-time-session`} exceeds
+#'         \code{.pkg_env$`life-time-session`}, a new session is created
+#'         via \code{\link{create_client_session}}.
+#'   \item \strong{URL normalisation}: a trailing slash is appended to
+#'         \code{url} if the last character is not \code{"/"}.
+#'   \item \strong{URL mismatch check}: if the normalised \code{url}
+#'         differs from \code{session$basic_req$url}, the session is
+#'         refreshed for the new target.
 #' }
 #'
-#' Session lifetime is controlled via \code{.pkg_env$life-time-session}.
+#' @section Session Lifetime:
+#' TTL is governed by \code{.pkg_env$`life-time-session`}, which should
+#' be set at package load time (e.g., in \code{.onLoad()}). The comparison
+#' is \code{Sys.time() - .pkg_env$`start-time-session` >
+#' .pkg_env$`life-time-session`}.
+#'
+#' @section Side Effects:
+#' When a new session is created, \code{\link{create_client_session}}
+#' updates both \code{.pkg_env$`current-session`} and
+#' \code{.pkg_env$`start-time-session`} as a side effect.
 #'
 #' @examples
 #' \dontrun{
-#' session <- active_client_session("https://www.investing.com")
-#' session$cookies
+#' # First call: creates a fresh session
+#' session <- active_client_session(
+#'   verb = "GET",
+#'   url  = "https://www.investing.com"
+#' )
+#'
+#' # Subsequent call: returns cached session if still valid
+#' session <- active_client_session(
+#'   verb = "GET",
+#'   url  = "https://www.investing.com"
+#' )
+#'
+#' # Different URL: forces a session refresh
+#' session <- active_client_session(
+#'   verb     = "GET",
+#'   url      = "https://api.investing.com/",
+#'   base_url = "https://www.investing.com"
+#' )
 #' }
 #'
-#' @seealso \code{\link{create_client_session}}
+#' @seealso
+#' \code{\link{create_client_session}},
+#' \code{\link[httr]{RETRY}}
 #'
-active_client_session = function(url, base_url = NULL, session = .pkg_env$`current-session`) {
+#' @keywords internal
+active_client_session = function(verb,url, base_url = NULL, query = NULL,original_headers = NULL, session = .pkg_env$`current-session`,pause = 3,times = 5) {
 
     if ((Sys.time() - .pkg_env$`start-time-session` > .pkg_env$`life-time-session`) || is.null(session)) {
-        session = create_client_session(url = url, base_url = base_url)
+        session = create_client_session(verb = verb, url = url, base_url = base_url,query = query, original_headers = original_headers,pause = pause,times = times)
     }
 
     # Ensure trailing slash
@@ -197,7 +389,7 @@ active_client_session = function(url, base_url = NULL, session = .pkg_env$`curre
 
     # Refresh session if URL changed
     if (session$basic_req$url != url) {
-        session = create_client_session(url = url, base_url = base_url)
+        session = create_client_session(verb = verb, url = url, base_url = base_url,query = query, original_headers = original_headers,pause = pause,times = times)
     }
 
     return(session)

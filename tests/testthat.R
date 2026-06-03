@@ -10,3 +10,5 @@ library(testthat)
 library(AfriMarkets)
 
 test_check("AfriMarkets")
+
+

@@ -146,8 +146,7 @@
 #' @importFrom rlang abort
 #' @importFrom dplyr mutate group_by arrange case_when lag bind_rows ungroup
 #' @importFrom xts xts
-#' @importFrom highcharter highchart hc_title hc_add_series hcaes
-#'   hc_add_yAxis hc_yAxis_multiples hc_rangeSelector hc_exporting hc_xAxis
+#' @importFrom highcharter highchart hc_title hc_add_series hcaes hc_add_yAxis hc_yAxis_multiples hc_rangeSelector hc_exporting hc_xAxis
 #' @importFrom magrittr %>%
 #'
 #' @examples

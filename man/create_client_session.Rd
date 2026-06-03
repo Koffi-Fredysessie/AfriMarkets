@@ -4,52 +4,161 @@
 \alias{create_client_session}
 \title{Create an HTTP Client Session with Persistent Headers and Cookies}
 \usage{
-create_client_session(url, base_url = NULL, original_headers = NULL)
+create_client_session(
+  verb,
+  url,
+  base_url = NULL,
+  query = NULL,
+  original_headers = NULL,
+  pause = 3,
+  times = 5
+)
 }
 \arguments{
-\item{url}{A character string specifying the target URL to initiate the session.}
+\item{verb}{A \code{character} string specifying the HTTP method to use
+(e.g., \code{"GET"}, \code{"POST"}). Passed directly to
+\code{httr::VERB()} and \code{httr::RETRY()}.}
 
-\item{base_url}{A character string specifying the base URL used to create the
-HTTP handle. Defaults to \code{url} if not provided.}
+\item{url}{A \code{character} string giving the target URL for the
+authenticated session request (may differ from \code{base_url}).}
 
-\item{original_headers}{A named character vector of HTTP headers to include
-in the request. If \code{NULL}, a default browser-like header set is used.}
+\item{base_url}{A \code{character} string giving the base URL used for
+the probe request and handle creation. Defaults to \code{url} when
+\code{NULL}.}
+
+\item{query}{A named \code{list} of query parameters appended to the
+request URL. Defaults to \code{NULL} (no query string).}
+
+\item{original_headers}{A named \code{character} vector of custom HTTP
+headers. When \code{NULL} (default), headers are automatically derived
+from the probe response; otherwise the provided headers are used
+directly.}
+
+\item{pause}{A \code{numeric} scalar (seconds) setting the cap for the
+exponential back-off between retries. Defaults to \code{3}.}
+
+\item{times}{A \code{numeric} scalar giving the maximum number of retry
+attempts. Defaults to \code{5}.}
 }
 \value{
-A list representing the session with the following elements:
-\itemize{
-\item \code{basic_req}: The original \code{httr} response object
-\item \code{headers}: Flattened string of all response headers
-\item \code{mini_headers}: Simplified headers from the response
-\item \code{cookies}: Cookie string extracted from the response
-\item \code{handle}: The \code{httr} handle used for persistent sessions
-\item \code{buildID}: Version identifier extracted from headers (if available)
-\item \code{original_headers}: Headers used to create the request
+A named \code{list} representing the session, with the following
+elements:
+\describe{
+\item{\code{basic_req}}{The final \code{httr} response object from
+the authenticated request to \code{url}.}
+\item{\code{headers}}{Raw \code{httr} response headers from the
+probe request (\code{httr::headers()}).}
+\item{\code{formated_headers}}{Named \code{character} vector of
+flattened headers ready for use in \code{httr::add_headers()}.}
+\item{\code{cookies}}{Raw cookie data frame from the probe response
+(\code{httr::cookies()}).}
+\item{\code{formated_cookies}}{Named \code{character} vector of
+cookies ready for use in \code{httr::set_cookies()}.}
+\item{\code{handle}}{The persistent \code{httr} handle bound to
+\code{base_url}.}
+\item{\code{buildID}}{The \code{"inv-version"} header value extracted
+from \code{all_headers} via \code{find_key_in_json()}, or
+\code{NULL} if absent.}
+\item{\code{original_headers}}{The \code{original_headers} argument
+as passed by the caller.}
+\item{\code{user_agent}}{The \code{httr} user-agent object built from
+local system information.}
 }
+The session is also stored in \code{.pkg_env$`current-session`} and
+the creation timestamp in \code{.pkg_env$`start-time-session`}.
 }
 \description{
-This function initializes an HTTP session using \code{httr}, retrieves
-response headers and cookies, and stores session metadata in a local
-environment for reuse. It is designed to mimic a browser session when
-interacting with web APIs or scraping dynamic websites.
+Initialises a stateful HTTP session by sending a probe request to
+\code{base_url}, extracting the server's response headers and cookies,
+then performing a fully authenticated retry request to \code{url}.
+The resulting session object is stored in the package-level environment
+\code{.pkg_env} for reuse by \code{\link{active_client_session}}.
+The request mimics a real browser user-agent built from the local
+system information.
 }
 \details{
-The function performs the following steps:
+The function proceeds through the following steps:
 \enumerate{
-\item Creates an HTTP handle using \code{httr::handle()}.
-\item Sends a GET request with custom headers.
-\item Validates the response status code.
-\item Extracts headers and cookies from the response.
-\item Stores session metadata in \code{.pkg_env}.
+\item Builds a \code{User-Agent} string from \code{verb},
+\code{"httr"}, the local OS name, and OS version via
+\code{Sys.info()}.
+\item Falls back \code{base_url <- url} if \code{base_url} is
+\code{NULL}.
+\item When \code{original_headers} is \code{NULL}:
+\enumerate{
+\item Sends a probe \code{VERB} request to \code{base_url}.
+\item Aborts with \code{rlang::abort()} if the status is not
+\code{200}.
+\item Extracts response headers; if \code{domain-id} is missing,
+injects \code{accept}, \code{access-control-request-headers},
+and \code{domain-id} (via the internal helper
+\code{extract_subdomain()}).
+\item Extracts cookies and creates a persistent \code{httr} handle.
+\item Sends a fully authenticated \code{RETRY} request to
+\code{url} (up to \code{times} attempts, back-off capped at
+\code{pause} seconds).
+\item Records \code{Sys.time()} in
+\code{.pkg_env$`start-time-session`}.
+}
+\item Assembles and returns the session list.
+}
+}
+\section{Package Environment}{
+
+This function writes to the following keys in \code{.pkg_env}:
+\itemize{
+\item \code{.pkg_env$`current-session`}: the complete session list.
+\item \code{.pkg_env$`start-time-session`}: \code{POSIXct} timestamp
+of session creation, used by \code{active_client_session()} for
+TTL checks.
+}
 }
 
-This function is useful for maintaining authenticated or stateful
-interactions with web services.
+\section{Internal Dependencies}{
+
+\itemize{
+\item \code{extract_subdomain(url)}: extracts the subdomain from a URL
+string for the \code{domain-id} header.
+\item \code{find_key_in_json(x, key)}: recursively searches response
+headers for the \code{"inv-version"} build identifier.
 }
+}
+
+\section{Error Handling}{
+
+\itemize{
+\item If the probe request to \code{base_url} returns a non-200 status,
+\code{rlang::abort("Connection to server failed!")} is called
+immediately.
+\item Transient failures during the authenticated request are retried
+automatically up to \code{times} times.
+}
+}
+
 \examples{
 \dontrun{
-session <- create_client_session("https://www.investing.com")
-session$cookies
+# Basic session on the default Investing.com site
+session <- create_client_session(
+  verb     = "GET",
+  url      = "https://www.investing.com"
+)
+session$buildID
+session$formated_cookies
+
+# Session with a distinct base URL and target URL
+session <- create_client_session(
+  verb     = "GET",
+  url      = "https://api.investing.com/api/financialdata/assets",
+  base_url = "https://www.investing.com",
+  pause    = 5,
+  times    = 3
+)
 }
 
 }
+\seealso{
+\code{\link{active_client_session}},
+\code{\link[httr]{RETRY}},
+\code{\link[httr]{handle}}
+}
+\keyword{internal}

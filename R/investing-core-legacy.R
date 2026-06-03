@@ -58,28 +58,16 @@
 #' @export
 get_all_market_id = function(base_url = "https://www.investing.com") {
 
-    headers = c(
-        accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        `accept-language` = "en-US,en;q=0.9,fr-FR;q=0.8,fr;q=0.7",
-        priority = "u=0, i",
-        referer = paste0(base_url,"/indices/nigeria-indices?include-major-indices=true&include-additional-indices=true&include-primary-sectors=true&include-other-indices=true"),
-        `sec-ch-ua` = '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
-        `sec-ch-ua-mobile` = "?0",
-        `sec-ch-ua-platform` = '"Windows"',
-        `sec-fetch-dest` = "document",
-        `sec-fetch-mode` = "navigate",
-        `sec-fetch-site` = "same-origin",
-        `sec-fetch-user` = "?1",
-        `upgrade-insecure-requests` = "1",
-        `user-agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-    )
-
     params = list(
         `include-major-indices` = "true",
         `include-additional-indices` = "true",
         `include-primary-sectors` = "true",
         `include-other-indices` = "true"
     )
+
+    session = active_client_session(verb = "GET",url = paste0(base_url, "/indices/nigeria-indices"),base_url = base_url)
+
+    headers = session$formated_headers
 
     req <- httr::GET(
         url = paste0(base_url, "/indices/nigeria-indices"),
@@ -264,27 +252,20 @@ get_link = function(market_id = 20){
 #'
 get_index_info_from_investing = function(market_id = "20", base_url = "https://www.investing.com") {
 
-    country_code <- stringr::str_extract(base_url, "(?<=https://)[a-z]+")
-
     link = get_link(market_id)
 
     country_url_prefix = gsub("/equities/","",link)
 
-    headers = c(
-        accept = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        `accept-language` = "en-US,en;q=0.9,fr-FR;q=0.8,fr;q=0.7",
-        priority = "u=0, i",
-        referer = paste0(base_url,"/indices/",country_url_prefix,"-indices?include-major-indices=true&include-additional-indices=true&include-primary-sectors=true&include-other-indices=true"),
-        `sec-ch-ua` = '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
-        `sec-ch-ua-mobile` = "?0",
-        `sec-ch-ua-platform` = '"Windows"',
-        `sec-fetch-dest` = "document",
-        `sec-fetch-mode` = "navigate",
-        `sec-fetch-site` = "same-origin",
-        `sec-fetch-user` = "?1",
-        `upgrade-insecure-requests` = "1",
-        `user-agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+    index_url = paste0(
+        base_url,
+        "/indices/",
+        country_url_prefix,
+        "-indices"
     )
+
+    session = active_client_session(verb = "GET",url = index_url,base_url = base_url)
+    headers = session$formated_headers
+    cookies = session$formated_cookies
 
     params = list(
         `include-major-indices` = "true",
@@ -293,21 +274,19 @@ get_index_info_from_investing = function(market_id = "20", base_url = "https://w
         `include-other-indices` = "true"
     )
 
-req <- httr::RETRY(
-    verb = "GET",
-    url = paste0(
-        base_url,
-        "/indices/",
-        country_url_prefix,
-        "-indices"
-    ),
-    httr::add_headers(.headers = headers),
-    query = params,
-    times = 5,
-    pause_base = 1,
-    pause_cap = 5,
-    terminate_on = c(400, 401, 403, 404)
-)
+    req <- httr::RETRY(
+        verb = "GET",
+        url = paste0(base_url,"/indices/",country_url_prefix,"-indices"),
+        httr::add_headers(.headers = headers),
+        httr::set_cookies(.cookies = cookies),
+        query = params,
+        session$user_agent,
+        times = 5,
+        pause_base = 1,
+        pause_cap = 5,
+        terminate_on = c(400, 401, 403, 404)
+    )
+
     if(req$status_code != 200) {
         rlang::abort("Connection to server failed !")
     }
@@ -507,30 +486,18 @@ req <- httr::RETRY(
 #'
 get_share_info_from_investing = function(market_id = "20", base_url = "https://www.investing.com") {
 
-    country_code <- stringr::str_extract(base_url, "(?<=https://)[a-z]+")
+    share_url = "https://api.investing.com/api/financialdata/assets/equitiesByCountry/default"
 
-    headers = c(
-        accept = "*/*",
-        `accept-language` = "en-US,en;q=0.9,fr-FR;q=0.8,fr;q=0.7",
-        `domain-id` = country_code,
-        origin = base_url,
-        priority = "u=1, i",
-        referer = base_url,
-        `sec-ch-ua` = '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
-        `sec-ch-ua-mobile` = "?0",
-        `sec-ch-ua-platform` = '"Windows"',
-        `sec-fetch-dest` = "empty",
-        `sec-fetch-mode` = "cors",
-        `sec-fetch-site` = "same-site",
-        `user-agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-    )
+    session = active_client_session(verb = "GET",url = "https://www.investing.com",base_url = base_url)
+    headers = session$formated_headers
+    cookies = session$formated_cookies
 
     params = list(
         `fields-list` = "id,name,symbol,isCFD,high,low,last,lastPairDecimal,change,changePercent,volume,time,isOpen,url,flag,countryNameTranslated,exchangeId,performanceDay,performanceWeek,performanceMonth,performanceYtd,performanceYear,performance3Year,technicalHour,technicalDay,technicalWeek,technicalMonth,avgVolume,fundamentalMarketCap,fundamentalRevenue,fundamentalRatio,fundamentalBeta,pairType",
         `country-id` = market_id,
         `filter-domain` = "",
         page = "0",
-        `page-size` = "1000",
+        `page-size` = "100000",
         limit = "0",
         `include-additional-indices` = "false",
         `include-major-indices` = "false",
@@ -541,13 +508,16 @@ get_share_info_from_investing = function(market_id = "20", base_url = "https://w
 
     req <- httr::RETRY(
         verb = "GET",
-        url = "https://api.investing.com/api/financialdata/assets/equitiesByCountry/default",
+        url = share_url,
         httr::add_headers(.headers = headers),
+        httr::set_cookies(.cookies = cookies),
+        handle = session$handle,
         query = params,
+        session$user_agent,
         times = 5,
         pause_base = 1,
-        pause_cap = 5,
-        terminate_on = c(400, 401, 403, 404)
+        pause_cap = 3,
+        quiet = TRUE
     )
 
     if(req$status_code != 200) {
@@ -779,7 +749,7 @@ search_instrument_info = function(ticker, base_url) {
 
     params = list(q = as.character(ticker))
 
-    session = active_client_session(url = base_url)
+    session = active_client_session(verb = "GET",url = base_url)
 
     req <- httr::VERB(
         "OPTIONS",
@@ -1089,7 +1059,6 @@ search_instrument_info = function(ticker, base_url) {
 #' @keywords internal
 .GET_DATA_FROM_INVESTING = function(market_code = "NGX",market_id = "20",ticker = "ALL",Period = "daily",from = Sys.Date() - 89,to = Sys.Date(),output_format = c("all","by_col","by_row"),base_url = "https://www.investing.com") {
 
-
     # ====================================================
     max_retries = 5
     retry_delay = 3
@@ -1138,7 +1107,6 @@ search_instrument_info = function(ticker, base_url) {
         df_period = list()
         df_test = NULL
 
-
         for(i in 1:(length(periods) - 1)) {  # parcourir les intervalles de periode
 
             from_date <- as.Date(periods[i])
@@ -1151,7 +1119,7 @@ search_instrument_info = function(ticker, base_url) {
                 `add-missing-rows` = "false"
             )
 
-            session = active_client_session(url = base_url)
+            session = active_client_session(verb = "GET",url = "https://www.investing.com",base_url = base_url)
             tick_info = head(market_ticker_info[which(market_ticker_info$SYMBOL == tick),],1)
 
             if(is.null(tick_info)){
@@ -1161,21 +1129,8 @@ search_instrument_info = function(ticker, base_url) {
             histo_url = paste0(tick_info$URL,"-historical-data")
             histo_url_basename = basename(histo_url)
 
-            headers = c(
-                accept = "*/*",
-                `accept-language` = "en-US,en;q=0.9,fr-FR;q=0.8,fr;q=0.7",
-                `domain-id` = "www",
-                origin = base_url,
-                priority = "u=1, i",
-                referer = base_url,
-                `sec-ch-ua` = '"Google Chrome";v="147", "Not.A/Brand";v="8", "Chromium";v="147"',
-                `sec-ch-ua-mobile` = "?0",
-                `sec-ch-ua-platform` = '"Windows"',
-                `sec-fetch-dest` = "empty",
-                `sec-fetch-mode` = "cors",
-                `sec-fetch-site` = "same-site",
-                `user-agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
-            )
+            headers = session$formated_headers
+            cookies = session$formated_cookies
 
             params = list(
                 `start-date` = from_date,
@@ -1184,33 +1139,34 @@ search_instrument_info = function(ticker, base_url) {
                 `add-missing-rows` = "false"
             )
 
-
-            res <- tryCatch({
+            req <- tryCatch({
 
                 httr::RETRY(
-                    "GET",
+                    verb = "GET",
                     url = paste0("https://api.investing.com/api/financialdata/historical/", tick_info$ID),
                     httr::add_headers(.headers = headers),
+                    httr::set_cookies(.cookies = cookies),
+                    session$user_agent,
                     handle = session$handle,
                     query = params,
-                    httr::timeout(retry_delay),
+                    pause_base = retry_delay,
                     times = max_retries,
                     quiet = TRUE
                 )
 
             }, error = function(e) NULL)
 
-
-            txt = res %>%
-                content(as = "text",encoding = "UTF8") %>%
-                fromJSON()
-
+            req
             Sys.sleep(runif(1,0.1,0.7))
 
-            if (inherits(res, "try-error") || status_code(res) != 200) {
+            if (inherits(res, "try-error") || status_code(req) != 200) {
                 message(paste("Can't extract data for",tick))
                 next
             }
+
+            txt = req %>%
+                content(as = "text",encoding = "UTF8") %>%
+                fromJSON()
 
             df_test <- tryCatch(
                 txt$data %>%
