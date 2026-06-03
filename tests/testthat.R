@@ -12,6 +12,3 @@ library(AfriMarkets)
 test_check("AfriMarkets")
 
 
-library(httr)
-library(tidyverse)
-
