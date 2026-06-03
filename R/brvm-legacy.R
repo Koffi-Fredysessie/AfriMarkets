@@ -116,12 +116,9 @@ brvm_share_index_info = function(){
 
         Ticker = options %>% html_attr("value") %>% strsplit("\\.") %>% sapply(`[`, 1),
 
-
         Description = options %>% html_text(trim = TRUE),
 
-
         `Country.Code` = options %>% html_attr("value") %>% strsplit("\\.") %>% sapply(`[`, 2) %>% toupper(),
-
 
         Ticker_fullname = options %>% html_attr("value")
     )
@@ -218,7 +215,7 @@ brvm_share_index_info = function(){
 
         for(i in 1:(length(periods) - 1)) {  # parcourir les intervalles de periode
 
-            session = active_client_session(url = base_url)
+            session = active_client_session(verb = "GET",url = base_url)
             from_date <- periods[i]
             to_date <- periods[i+1]
 

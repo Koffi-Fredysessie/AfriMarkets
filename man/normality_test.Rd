@@ -75,8 +75,8 @@ normality_test(x, c("shapiro-wilk", "jarque bera"))
 \seealso{
 \code{\link{stationarity_test}}
 
-Other statistical_tests: 
-\code{\link{stationarity_test}()}
+Other statistical_tests:
+\code{\link[=stationarity_test]{stationarity_test()}}
 }
 \author{
 Koffi Frederic SESSIE \cr

@@ -5,48 +5,116 @@
 \title{Retrieve or Refresh an Active HTTP Client Session}
 \usage{
 active_client_session(
+  verb,
   url,
   base_url = NULL,
-  session = .pkg_env$`current-session`
+  query = NULL,
+  original_headers = NULL,
+  session = .pkg_env$`current-session`,
+  pause = 3,
+  times = 5
 )
 }
 \arguments{
-\item{url}{A character string specifying the target URL.}
+\item{verb}{A \code{character} string specifying the HTTP method
+(e.g., \code{"GET"}, \code{"POST"}). Forwarded to
+\code{\link{create_client_session}} when a new session is needed.}
 
-\item{base_url}{A character string specifying the base URL for the session.}
+\item{url}{A \code{character} string giving the target URL. A trailing
+slash is appended automatically if absent before comparison with the
+stored session URL.}
 
-\item{session}{A session object previously created by
-\code{create_client_session()}. Defaults to the current session stored in
-\code{.pkg_env}.}
+\item{base_url}{A \code{character} string for the base URL used when
+creating a new session. Defaults to \code{NULL} (falls back to
+\code{url} inside \code{\link{create_client_session}}).}
+
+\item{query}{A named \code{list} of URL query parameters. Defaults to
+\code{NULL}.}
+
+\item{original_headers}{A named \code{character} vector of custom HTTP
+headers forwarded to \code{\link{create_client_session}} if a new
+session must be created. Defaults to \code{NULL}.}
+
+\item{session}{A session \code{list} as returned by
+\code{\link{create_client_session}}. Defaults to
+\code{.pkg_env$`current-session`} (the package-level cached session).}
+
+\item{pause}{A \code{numeric} scalar (seconds) capping the retry
+back-off. Defaults to \code{3}. Forwarded to
+\code{\link{create_client_session}}.}
+
+\item{times}{A \code{numeric} scalar giving the maximum number of retry
+attempts. Defaults to \code{5}. Forwarded to
+\code{\link{create_client_session}}.}
 }
 \value{
-A valid session object (list) containing request, headers, cookies,
-and handle information.
+A valid session \code{list} (see \code{\link{create_client_session}}
+for the full structure), guaranteed to correspond to the requested
+\code{url} and to be within its TTL at the time of return.
 }
 \description{
-This function returns an active HTTP session stored in a local environment.
-If the current session has expired or is invalid, a new session is created
-using \code{create_client_session()}.
+Returns the current HTTP session stored in \code{.pkg_env}, refreshing
+it transparently when it has expired (TTL exceeded) or when the target
+URL has changed. If no valid session exists, a new one is created via
+\code{\link{create_client_session}}. This function is the recommended
+entry point for all internal HTTP requests that require session
+continuity.
 }
 \details{
-The function performs the following checks:
+The function applies the following decision logic in order:
 \enumerate{
-\item Verifies if the session exists and has not expired.
-\item If expired or missing, creates a new session.
-\item Ensures the URL ends with a trailing slash.
-\item Compares the requested URL with the session URL.
-\item Refreshes the session if the URL has changed.
+\item \strong{TTL / NULL check}: if \code{session} is \code{NULL}
+\emph{or} the elapsed time since
+\code{.pkg_env$`start-time-session`} exceeds
+\code{.pkg_env$`life-time-session`}, a new session is created
+via \code{\link{create_client_session}}.
+\item \strong{URL normalisation}: a trailing slash is appended to
+\code{url} if the last character is not \code{"/"}.
+\item \strong{URL mismatch check}: if the normalised \code{url}
+differs from \code{session$basic_req$url}, the session is
+refreshed for the new target.
+}
+}
+\section{Session Lifetime}{
+
+TTL is governed by \code{.pkg_env$`life-time-session`}, which should
+be set at package load time (e.g., in \code{.onLoad()}). The comparison
+is \code{Sys.time() - .pkg_env$`start-time-session` >
+.pkg_env$`life-time-session`}.
 }
 
-Session lifetime is controlled via \code{.pkg_env$life-time-session}.
+\section{Side Effects}{
+
+When a new session is created, \code{\link{create_client_session}}
+updates both \code{.pkg_env$`current-session`} and
+\code{.pkg_env$`start-time-session`} as a side effect.
 }
+
 \examples{
 \dontrun{
-session <- active_client_session("https://www.investing.com")
-session$cookies
+# First call: creates a fresh session
+session <- active_client_session(
+  verb = "GET",
+  url  = "https://www.investing.com"
+)
+
+# Subsequent call: returns cached session if still valid
+session <- active_client_session(
+  verb = "GET",
+  url  = "https://www.investing.com"
+)
+
+# Different URL: forces a session refresh
+session <- active_client_session(
+  verb     = "GET",
+  url      = "https://api.investing.com/",
+  base_url = "https://www.investing.com"
+)
 }
 
 }
 \seealso{
-\code{\link{create_client_session}}
+\code{\link{create_client_session}},
+\code{\link[httr]{RETRY}}
 }
+\keyword{internal}

@@ -90,8 +90,8 @@ stationarity_test(ts(x_stationary, frequency = 12), "ALL")
 \code{\link[tseries]{pp.test}},
 \code{\link[stats]{Box.test}}
 
-Other statistical_tests: 
-\code{\link{.normality_test_core}()}
+Other statistical_tests:
+\code{\link[=.normality_test_core]{.normality_test_core()}}
 }
 \author{
 Koffi Frederic SESSIE \cr
