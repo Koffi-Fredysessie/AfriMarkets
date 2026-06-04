@@ -15,4 +15,6 @@
 ^\.Rhistory$
 ^vignettes$
 ^doc$
+^pdf$
 ^Meta$
+^AfriMarkets_Documentation\.pdf$
