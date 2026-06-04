@@ -1156,10 +1156,9 @@ search_instrument_info = function(ticker, base_url) {
 
             }, error = function(e) NULL)
 
-            req
             Sys.sleep(runif(1,0.1,0.7))
 
-            if (inherits(res, "try-error") || status_code(req) != 200) {
+            if (inherits(req, "try-error") || status_code(req) != 200) {
                 message(paste("Can't extract data for",tick))
                 next
             }

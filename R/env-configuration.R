@@ -14,7 +14,7 @@
 .pkg_env$`current-session` = NULL
 .pkg_env$build_id = NULL
 .pkg_env$`start-time-session`= Sys.time()
-.pkg_env$`life-time-session`= 1800 # 1800 sec
+.pkg_env$`life-time-session`= 1 #1800 # 1800 sec
 
 # Cache AfriMarkets for 'investing.com'
 .pkg_env$last_cache_operation_is_available = FALSE
